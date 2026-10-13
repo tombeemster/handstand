@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#11131a">
 <title>Handstand</title>
@@ -230,8 +231,7 @@ function debug(now, lm) {
     `${$('video').videoWidth}x${$('video').videoHeight}`,
     `${startTs === null ? 'idle' : manual ? 'manual' : 'up'}  inv ${invRun}/${CONFIRM}  down ${downRun}/${CONFIRM}`,
     `nose  ${v(0)}`, `wrist ${v(15, 16)}`, `hip   ${v(23, 24)}`, `ankle ${v(27, 28)}`,
-  ].join('
-');
+  ].join('\n');
 }
 
 function onFrame(now) {
