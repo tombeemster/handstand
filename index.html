@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#11131a">
+<title>Handstand</title>
+<style>
+  :root { --bg: #11131a; --card: #1c1f2a; --text: #f2f3f7; --dim: #8b90a3; --go: #3ddc84; --wait: #ffb347; --gold: #ffd54a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: env(safe-area-inset-top) 16px 32px; background: var(--bg); color: var(--text);
+         font: 17px/1.4 system-ui, sans-serif; -webkit-user-select: none; user-select: none; }
+  header { display: flex; justify-content: space-between; align-items: baseline; padding: 16px 0; }
+  h1 { margin: 0; font-size: 22px; }
+  header b { font-size: 28px; color: var(--gold); font-variant-numeric: tabular-nums; }
+  #stage { position: relative; margin: 0 -16px 12px; background: #000; }
+  video { display: block; width: 100%; height: 55vh; object-fit: contain; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  #timer { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 84px; font-weight: 700;
+           font-variant-numeric: tabular-nums; text-shadow: 0 2px 12px #000; }
+  #timer.record { color: var(--gold); }
+  #status { position: absolute; top: 8px; left: 8px; padding: 4px 10px; border-radius: 99px; background: #000a; font-size: 14px; }
+  nav { display: flex; gap: 8px; }
+  button { flex: 1; padding: 16px; border: 0; border-radius: 14px; background: var(--card); color: var(--text); font: inherit; font-weight: 600; }
+  button.primary { background: var(--go); color: #06240f; }
+  ul { list-style: none; margin: 16px 0 0; padding: 0; }
+  li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 6px; border-radius: 12px; background: var(--card); }
+  li.best { outline: 2px solid var(--gold); }
+  li time { color: var(--dim); font-size: 14px; flex: 1; }
+  li strong { font-size: 20px; font-variant-numeric: tabular-nums; }
+  li small { color: var(--wait); }
+  li button { flex: none; padding: 4px 10px; background: none; color: var(--dim); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header><h1>Handstand</h1><span>Best <b id="best">–</b></span></header>
+
+<div id="stage" hidden>
+  <video id="video" playsinline muted></video>
+  <canvas id="overlay"></canvas>
+  <div id="status"></div>
+  <div id="timer">0.00</div>
+</div>
+
+<nav>
+  <button id="toggle" class="primary">Start session</button>
+  <button id="manual" hidden>Manual start</button>
+  <button id="export">Export CSV</button>
+</nav>
+
+<ul id="list"></ul>
+
+<script type="module">
+const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+const VIS = 0.5, CONFIRM = 3, LOST_MS = 500, MIN_MS = 1000, BACKDATE_MS = 2000;
+const BONES = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
+const KEY = 'handstand.attempts';
+
+const $ = id => document.getElementById(id);
+const fmt = ms => (ms / 1000).toFixed(2);
+
+// ---- log (newest first) ----
+let attempts = JSON.parse(localStorage.getItem(KEY) || '[]');
+const best = () => Math.max(0, ...attempts.map(a => a.duration_ms));
+
+function render() {
+  localStorage.setItem(KEY, JSON.stringify(attempts));
+  const pb = best();
+  $('best').textContent = pb ? fmt(pb) + ' s' : '–';
+  $('list').innerHTML = attempts.map(a => `
+    <li class="${a.duration_ms === pb ? 'best' : ''}">
+      <time>${a.started_at.replace('T', ' ')}</time>
+      <small>${a.method === 'manual' ? 'manual' : ''}${a.flagged ? ' ⚠ check' : ''}</small>
+      <strong>${fmt(a.duration_ms)} s</strong>
+      <button data-id="${a.id}" aria-label="Delete">✕</button>
+    </li>`).join('');
+}
+
+$('list').onclick = e => {
+  const id = e.target.dataset.id;
+  if (id && confirm('Delete this attempt?')) { attempts = attempts.filter(a => a.id !== id); render(); }
+};
+
+$('export').onclick = () => {
+  const csv = ['id,started_at,duration_ms,method,flagged',
+    ...attempts.map(a => [a.id, a.started_at, a.duration_ms, a.method, !!a.flagged].join(','))].join('\n');
+  const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'handstand.csv' });
+  link.click();
+  URL.revokeObjectURL(link.href);
+};
+
+// ---- sound ----
+let audio;
+function beep(notes) {
+  let t = audio.currentTime;
+  for (const freq of notes) {
+    const osc = audio.createOscillator(), gain = audio.createGain();
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    osc.connect(gain).connect(audio.destination);
+    osc.start(t); osc.stop(t + 0.18);
+    t += 0.13;
+  }
+}
+
+// New-best sound: "YOO-HOO 01.wav" by sandyrb, https://freesound.org/s/86223/ (CC BY 4.0)
+const cheerEl = new Audio('86223__sandyrb__yoo-hoo-01.wav');
+
+// iOS only lets an audio element play later if it was first started from a tap
+function unlockCheer() {
+  cheerEl.muted = true;
+  cheerEl.play().then(() => { cheerEl.pause(); cheerEl.muted = false; }).catch(console.error);
+}
+
+function cheer() {
+  cheerEl.currentTime = 0;
+  cheerEl.play().catch(err => { console.error(err); beep([523, 659, 784, 1047]); });
+}
+
+// ---- attempt: every time is on the performance.now() clock ----
+let startTs = null, manual = false;
+
+function begin(ts, isManual = false) {
+  startTs = ts; manual = isManual;
+  $('timer').classList.remove('record');
+  $('manual').textContent = 'Stop';
+}
+
+function finish(endTs, flagged = false) {
+  const duration_ms = Math.round(endTs - startTs);
+  if (duration_ms >= MIN_MS) {
+    const record = best() > 0 && duration_ms > best();
+    const started = new Date(Date.now() - (performance.now() - startTs));
+    attempts.unshift({
+      id: Math.random().toString(36).slice(2, 8),
+      started_at: new Date(started - started.getTimezoneOffset() * 60000).toISOString().slice(0, 19),
+      duration_ms, method: manual ? 'manual' : 'auto', ...(flagged && { flagged }),
+    });
+    render();
+    $('timer').classList.toggle('record', record);
+    record ? cheer() : beep([880]);
+  }
+  $('timer').textContent = fmt(duration_ms);
+  startTs = null; manual = false; invRun = 0;
+  $('manual').textContent = 'Manual start';
+}
+
+$('manual').onclick = () => {
+  if (startTs === null) begin(performance.now(), true);
+  else { manual = true; finish(performance.now()); }
+};
+
+// ---- detection ----
+let invRun = 0, downRun = 0, downTs = 0, seenTs = 0, wristHist = [];
+
+function step(ts, lm) {
+  const ys = (...ids) => lm ? ids.filter(i => lm[i].visibility > VIS).map(i => lm[i].y) : [];
+  const wrists = ys(15, 16), hips = ys(23, 24), ankles = ys(27, 28);
+  const tracked = hips.length > 0 && ankles.length > 0;
+  const hip = hips.reduce((a, b) => a + b, 0) / hips.length;
+  const wrist = wrists.length ? Math.max(...wrists) : null;   // image y grows downward
+
+  wristHist.push({ ts, wrist });
+  while (wristHist[0].ts < ts - BACKDATE_MS) wristHist.shift();
+  if (manual) return;
+
+  if (startTs === null) {
+    const inverted = tracked && wrist !== null && ankles.every(y => y < hip) && hip < wrist;
+    invRun = inverted ? invRun + 1 : 0;
+    if (invRun >= CONFIRM) {
+      // backdate to the first frame the wrists were already planted where they are now
+      const tol = (wrist - hip) * 0.12;
+      let t = ts;
+      for (let i = wristHist.length - 1; i >= 0 && wristHist[i].wrist !== null && Math.abs(wristHist[i].wrist - wrist) <= tol; i--) t = wristHist[i].ts;
+      begin(t); seenTs = ts; downRun = 0;
+    }
+  } else if (!tracked) {
+    if (ts - seenTs > LOST_MS) finish(seenTs, true);
+  } else {
+    seenTs = ts;
+    if (ankles.some(y => y > hip)) {
+      if (!downRun++) downTs = ts;
+      if (downRun >= CONFIRM) finish(downTs);
+    } else downRun = 0;
+  }
+}
+
+function draw(lm) {
+  const cv = $('overlay'), v = $('video'), g = cv.getContext('2d');
+  if (cv.width !== v.videoWidth) { cv.width = v.videoWidth; cv.height = v.videoHeight; }
+  g.clearRect(0, 0, cv.width, cv.height);
+  const seen = i => lm[i].visibility > VIS;
+  const framed = lm && seen(0) && (seen(15) || seen(16)) && (seen(23) || seen(24)) && (seen(27) || seen(28));
+  $('status').textContent = startTs !== null ? 'Up!' : !lm ? 'No one in view'
+    : framed ? 'Ready – kick up' : 'Step back: whole body in frame, side-on works best';
+  if (!lm) return;
+  g.strokeStyle = framed || startTs !== null ? '#3ddc84' : '#ffb347';
+  g.lineWidth = 4;
+  g.beginPath();
+  for (const [a, b] of BONES) if (seen(a) && seen(b)) {
+    g.moveTo(lm[a].x * cv.width, lm[a].y * cv.height);
+    g.lineTo(lm[b].x * cv.width, lm[b].y * cv.height);
+  }
+  g.stroke();
+}
+
+// ---- session ----
+let live = false, stream, landmarker, wake;
+
+async function loadModel() {
+  const { FilesetResolver, PoseLandmarker } = await import(MP + '/vision_bundle.mjs');
+  const files = await FilesetResolver.forVisionTasks(MP + '/wasm');
+  return PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate: 'GPU' }, runningMode: 'VIDEO' });
+}
+
+function onFrame(now) {
+  if (!live) return;
+  const lm = landmarker.detectForVideo($('video'), now).landmarks[0];
+  step(now, lm);
+  draw(lm);
+  $('video').requestVideoFrameCallback(onFrame);
+}
+
+function tick() {
+  if (!live) return;
+  if (startTs !== null) $('timer').textContent = fmt(performance.now() - startTs);
+  requestAnimationFrame(tick);
+}
+
+async function startSession() {
+  live = true;
+  audio ??= new AudioContext();
+  audio.resume();
+  unlockCheer();
+  $('stage').hidden = $('manual').hidden = false;
+  $('toggle').textContent = 'End session';
+  $('status').textContent = 'Starting camera…';
+  tick();
+  try { wake = await navigator.wakeLock?.request('screen'); } catch {}
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } } });
+    if (!live) return s.getTracks().forEach(t => t.stop());
+    stream = s;
+    $('video').srcObject = stream;
+    await $('video').play();
+    $('status').textContent = 'Loading pose model…';
+    landmarker ??= await loadModel();
+    if (live) $('video').requestVideoFrameCallback(onFrame);
+  } catch (err) {
+    console.error(err);
+    $('status').textContent = 'No camera or pose model – use manual timing';
+  }
+}
+
+function endSession() {
+  live = false;
+  startTs = null; manual = false; invRun = 0; wristHist = [];
+  stream?.getTracks().forEach(t => t.stop());
+  stream = $('video').srcObject = null;
+  wake?.release();
+  $('stage').hidden = $('manual').hidden = true;
+  $('toggle').textContent = 'Start session';
+  $('manual').textContent = 'Manual start';
+}
+
+$('toggle').onclick = () => live ? endSession() : startSession();
+render();
+</script>
+</body>
+</html>
