@@ -18,12 +18,13 @@
   #stage { position: relative; margin: 0 -16px 12px; background: #000; }
   video { display: block; width: 100%; height: 55vh; object-fit: contain; }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .mirror video, .mirror canvas { transform: scaleX(-1); }
   #timer { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 84px; font-weight: 700;
            font-variant-numeric: tabular-nums; text-shadow: 0 2px 12px #000; }
   #timer.record { color: var(--gold); }
   #status { position: absolute; top: 8px; left: 8px; padding: 4px 10px; border-radius: 99px; background: #000a; font-size: 14px; }
   nav { display: flex; gap: 8px; }
-  button { flex: 1; padding: 16px; border: 0; border-radius: 14px; background: var(--card); color: var(--text); font: inherit; font-weight: 600; }
+  button { flex: 1; padding: 16px; border: 0; border-radius: 4px; background: var(--card); color: var(--text); font: inherit; font-weight: 600; }
   button.primary { background: var(--go); color: #06240f; }
   ul { list-style: none; margin: 16px 0 0; padding: 0; }
   li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; margin-bottom: 6px; border-radius: 12px; background: var(--card); }
@@ -31,6 +32,7 @@
   li time { color: var(--dim); font-size: 14px; flex: 1; }
   li strong { font-size: 20px; font-variant-numeric: tabular-nums; }
   li small { color: var(--wait); }
+  select { flex: 1; min-width: 0; padding: 16px 8px; border: 0; border-radius: 4px; background: var(--card); color: var(--text); font: inherit; }
   li button { flex: none; padding: 4px 10px; background: none; color: var(--dim); }
   #debug { position: absolute; top: 8px; right: 8px; margin: 0; padding: 4px 8px; border-radius: 8px; background: #000a; font: 12px/1.3 ui-monospace, monospace; }
   [hidden] { display: none !important; }
@@ -50,6 +52,7 @@
 <nav>
   <button id="toggle" class="primary">Start session</button>
   <button id="manual" hidden>Manual start</button>
+  <select id="camera" hidden aria-label="Camera"></select>
   <button id="export">Export CSV</button>
 </nav>
 
@@ -60,6 +63,17 @@ const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 // Ankles get a lower bar: in loose trousers the model places them right but scores them ~0.3–0.45
 const VIS = 0.5, ANKLE_VIS = 0.3, CONFIRM = 3, LOST_MS = 500, MIN_MS = 1000, HISTORY_MS = 2000;
+// An attempt that restarts within MERGE_MS of ending was one attempt: nobody lands and kicks up
+// again that fast, but the model can lose her for a moment (e.g. someone walking past)
+const MERGE_MS = 600;
+// Salute: arms up, whole body at least EDGE inside the frame, held SALUTE_MS. It locks on to the
+// athlete. (A size check against the salute was tried and dropped: she salutes further from the
+// camera than she does handstands, so handstands measure 1.3-1.5x her salute.)
+const SALUTE_MS = 500, EDGE = 0.03;
+// Lock: after the salute only a pose near the athlete's last position counts (reach grows by
+// SPEED salute-heights per second unseen); unseen for LOCK_MS releases the lock until a new salute.
+// NUM_POSES 2 was tried: the model then reports one body twice (upright and flipped), worse.
+const SPEED = 1.5, LOCK_MS = 2000, NUM_POSES = 1;
 const BONES = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
 const KEY = 'handstand.attempts';
 
@@ -126,7 +140,7 @@ function cheer() {
 }
 
 // ---- attempt: every time is on the performance.now() clock ----
-let startTs = null, manual = false;
+let startTs = null, manual = false, last = null;   // last: the previous auto attempt { start, end, id }
 
 function begin(ts, isManual = false) {
   startTs = ts; manual = isManual;
@@ -136,11 +150,13 @@ function begin(ts, isManual = false) {
 
 function finish(endTs, flagged = false) {
   const duration_ms = Math.round(endTs - startTs);
+  const id = Math.random().toString(36).slice(2, 8);
+  last = manual ? null : { start: startTs, end: endTs, id };
   if (duration_ms >= MIN_MS) {
     const record = best() > 0 && duration_ms > best();
     const started = new Date(Date.now() - (performance.now() - startTs));
     attempts.unshift({
-      id: Math.random().toString(36).slice(2, 8),
+      id,
       started_at: new Date(started - started.getTimezoneOffset() * 60000).toISOString().slice(0, 19),
       duration_ms, method: manual ? 'manual' : 'auto', ...(flagged && { flagged }),
     });
@@ -160,6 +176,26 @@ $('manual').onclick = () => {
 
 // ---- detection (tools/replay.py copies these rules to test on recorded videos: change both) ----
 let invRun = 0, downRun = 0, downTs = 0, seenTs = 0, hist = [];
+let saluteSize = null, saluteFrom = null;   // athlete height (fraction of frame) from the last salute
+let athlete = null;                         // { x, y, ts }: hip centre in pixels when last seen
+
+function hipCentre(lm) {
+  const v = $('video');
+  return [(lm[23].x + lm[24].x) / 2 * v.videoWidth, (lm[23].y + lm[24].y) / 2 * v.videoHeight];
+}
+
+// The pose that is the athlete this frame, or null. Phantoms elsewhere in the room are skipped.
+function pickAthlete(poses, ts) {
+  if (athlete && startTs === null && ts - athlete.ts > LOCK_MS) athlete = saluteSize = null;
+  if (!athlete) return poses.find(saluting) ?? poses[0] ?? null;   // only a salute can lock on
+  let pick = null, reach = (0.3 + SPEED * (ts - athlete.ts) / 1000) * saluteSize * $('video').videoHeight;
+  for (const lm of poses) {
+    const [x, y] = hipCentre(lm), d = Math.hypot(x - athlete.x, y - athlete.y);
+    if (d <= reach) { pick = lm; reach = d; }
+  }
+  if (pick) [athlete.x, athlete.y, athlete.ts] = [...hipCentre(pick), ts];
+  return pick;
+}
 
 // Within 45° of vertical, wrists to ankles, in pixels. A phantom "person" lying sideways
 // (e.g. found in the clutter on a table) passes the top-to-bottom order checks by a hair.
@@ -173,6 +209,24 @@ function upright(lm) {
   return Math.abs(wy - ay) > Math.abs(wx - ax);
 }
 
+// Both wrists above the nose while standing, with nose, wrists and ankles inside the frame
+function saluting(lm) {
+  if (!lm) return false;
+  const ok = (i, vis = VIS) => lm[i].visibility > vis && lm[i].x > EDGE && lm[i].x < 1 - EDGE && lm[i].y > EDGE && lm[i].y < 1 - EDGE;
+  const hip = (lm[23].y + lm[24].y) / 2;
+  return ok(0) && ok(15) && ok(16) && ok(27, ANKLE_VIS) && ok(28, ANKLE_VIS)
+    && lm[15].y < lm[0].y && lm[16].y < lm[0].y && lm[27].y > hip && lm[28].y > hip;
+}
+
+// Why a salute can't count yet, in words (the framing check's feedback), or null
+function framingHint(lm) {
+  const off = i => lm[i].x < EDGE || lm[i].x > 1 - EDGE || lm[i].y < EDGE || lm[i].y > 1 - EDGE;
+  if (off(15) || off(16)) return 'Hands out of frame – step back';
+  if (off(27) || off(28)) return 'Feet out of frame – step back';
+  if (off(0)) return 'Head out of frame – step back';
+  return null;
+}
+
 function step(ts, lm) {
   const ys = (ids, vis = VIS) => lm ? ids.filter(i => lm[i].visibility > vis).map(i => lm[i].y) : [];
   const wrists = ys([15, 16]), hips = ys([23, 24]), ankles = ys([27, 28], ANKLE_VIS);
@@ -184,6 +238,18 @@ function step(ts, lm) {
   while (hist[0].ts < ts - HISTORY_MS) hist.shift();
   if (manual) return;
 
+  if (startTs === null && saluting(lm)) {
+    saluteFrom ??= ts;
+    if (ts - saluteFrom >= SALUTE_MS && saluteSize === null) beep([660, 880]);
+    if (ts - saluteFrom >= SALUTE_MS) {
+      saluteSize = Math.max(...ankles) - Math.min(...wrists);
+      athlete = { x: hipCentre(lm)[0], y: hipCentre(lm)[1], ts };
+    }
+    return;
+  }
+  saluteFrom = null;
+  if (saluteSize === null) return;
+
   if (startTs === null) {
     // a real attempt starts with a kick-up: feet below the hips shortly before. Static objects
     // mistaken for a person (e.g. pillows) never do that, so they can't start an attempt.
@@ -192,43 +258,56 @@ function step(ts, lm) {
     if (invRun >= CONFIRM) {
       // backdate to the first frame the wrists were already planted where they are now
       // (frames without wrists are skipped: the model drops single frames during a kick-up)
-      const tol = (wrist - hip) * 0.12;
+      const tol = (wrist - hip) * 0.2;
       let t = ts;
       for (let i = hist.length - 1; i >= 0; i--) {
         if (hist[i].wrist === null) continue;
         if (Math.abs(hist[i].wrist - wrist) > tol) break;
         t = hist[i].ts;
       }
+      if (last && t - last.end < MERGE_MS) {   // same attempt, continued
+        attempts = attempts.filter(a => a.id !== last.id);
+        render();
+        t = last.start;
+      }
       begin(t); seenTs = ts; downRun = 0;
     }
-  } else if (!tracked) {
-    if (ts - seenTs > LOST_MS) finish(seenTs, true);
   } else {
-    seenTs = ts;
-    if (ankles.some(y => y > hip)) {
-      if (!downRun++) downTs = ts;
-      if (downRun >= CONFIRM) finish(downTs);
-    } else downRun = 0;
+    // Head above the hips mid-attempt: the model has fitted her the wrong way up (after a dropped
+    // frame, and in front-on views). Its "wrists" are then on her feet, so read them as the feet.
+    const flipped = lm && lm[0].visibility > VIS && lm[0].y < hip;
+    const feet = flipped ? [lm[15].y, lm[16].y] : ankles;
+    if (!hips.length || !feet.length) {
+      if (ts - seenTs > LOST_MS) finish(seenTs, true);
+    } else {
+      seenTs = ts;
+      if (feet.some(y => y > hip)) {
+        if (!downRun++) downTs = ts;
+        if (downRun >= CONFIRM) finish(downTs);
+      } else downRun = 0;
+    }
   }
 }
 
-function draw(lm) {
+function draw(lm, poses) {
   const cv = $('overlay'), v = $('video'), g = cv.getContext('2d');
   if (cv.width !== v.videoWidth) { cv.width = v.videoWidth; cv.height = v.videoHeight; }
   g.clearRect(0, 0, cv.width, cv.height);
-  const seen = (i, vis = VIS) => lm[i].visibility > vis;
-  const framed = lm && seen(0) && (seen(15) || seen(16)) && (seen(23) || seen(24)) && (seen(27, ANKLE_VIS) || seen(28, ANKLE_VIS));
-  $('status').textContent = startTs !== null ? 'Up!' : !lm ? 'No one in view'
-    : framed ? 'Ready – kick up' : 'Step back: whole body in frame, side-on works best';
-  if (!lm) return;
-  g.strokeStyle = framed || startTs !== null ? '#3ddc84' : '#ffb347';
-  g.lineWidth = 4;
-  g.beginPath();
-  for (const [a, b] of BONES) if (seen(a, a > 26 ? ANKLE_VIS : VIS) && seen(b, b > 26 ? ANKLE_VIS : VIS)) {
-    g.moveTo(lm[a].x * cv.width, lm[a].y * cv.height);
-    g.lineTo(lm[b].x * cv.width, lm[b].y * cv.height);
-  }
-  g.stroke();
+  const skeleton = (p, colour) => {
+    g.strokeStyle = colour;
+    g.lineWidth = 4;
+    g.beginPath();
+    for (const [a, b] of BONES) if (p[a].visibility > (a > 26 ? ANKLE_VIS : VIS) && p[b].visibility > (b > 26 ? ANKLE_VIS : VIS)) {
+      g.moveTo(p[a].x * cv.width, p[a].y * cv.height);
+      g.lineTo(p[b].x * cv.width, p[b].y * cv.height);
+    }
+    g.stroke();
+  };
+  for (const p of poses) if (p !== lm) skeleton(p, '#8b90a380');   // ignored: phantoms, bystanders
+  $('status').textContent = startTs !== null ? 'Up!' : saluteFrom !== null ? (saluteSize === null ? 'Hold it…' : 'Saluted – kick up')
+    : saluteSize !== null ? 'Ready – kick up' : !lm ? 'No one in view'
+    : framingHint(lm) ?? 'Salute to start: arms up, whole body in frame, side-on works best';
+  if (lm) skeleton(lm, saluteSize !== null || saluteFrom !== null ? '#3ddc84' : '#ffb347');
 }
 
 // ---- session ----
@@ -237,31 +316,82 @@ let live = false, stream, landmarker, wake;
 async function loadModel() {
   const { FilesetResolver, PoseLandmarker } = await import(MP + '/vision_bundle.mjs');
   const files = await FilesetResolver.forVisionTasks(MP + '/wasm');
-  return PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate: 'GPU' }, runningMode: 'VIDEO' });
+  return PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate: 'GPU' }, runningMode: 'VIDEO', numPoses: NUM_POSES });
 }
 
 // Debug readout: landmark numbers are visibility in %, left then right; detection needs > 50 (ankles > 30)
 let fps = 0, prevNow = 0;
-function debug(now, lm) {
+function debug(now, lm, poses) {
   fps = fps * 0.9 + (1000 / (now - prevNow)) * 0.1;
   prevNow = now;
   const v = (...ids) => ids.map(i => lm ? Math.round(lm[i].visibility * 100) : '--').join(' ');
   $('debug').textContent = [
-    `${fps.toFixed(0)} fps  ${(performance.now() - now).toFixed(0)} ms`,
+    `${fps.toFixed(0)} fps  ${(performance.now() - now).toFixed(0)} ms  poses ${poses.length}${athlete ? ' locked' : ''}`,
     `${$('video').videoWidth}x${$('video').videoHeight}`,
     `${startTs === null ? 'idle' : manual ? 'manual' : 'up'}  inv ${invRun}/${CONFIRM}  down ${downRun}/${CONFIRM}`,
+    `salute ${saluteSize === null ? '--' : Math.round(saluteSize * 100) + '%'}  now ${lm ? Math.round((Math.max(lm[27].y, lm[28].y, lm[15].y, lm[16].y) - Math.min(lm[27].y, lm[28].y, lm[15].y, lm[16].y)) * 100) + '%' : '--'}`,
     `nose  ${v(0)}`, `wrist ${v(15, 16)}`, `hip   ${v(23, 24)}`, `ankle ${v(27, 28)}`,
   ].join('\n');
 }
 
+let frameReq;
 function onFrame(now) {
   if (!live) return;
-  const lm = landmarker.detectForVideo($('video'), now).landmarks[0];
+  const poses = landmarker.detectForVideo($('video'), now).landmarks;
+  const lm = pickAthlete(poses, now) ?? undefined;
   step(now, lm);
-  draw(lm);
-  debug(now, lm);
-  $('video').requestVideoFrameCallback(onFrame);
+  draw(lm, poses);
+  debug(now, lm, poses);
+  frameReq = $('video').requestVideoFrameCallback(onFrame);
 }
+
+// Back to "nobody seen yet": no lock, no attempt in progress
+function resetDetection() {
+  startTs = null; manual = false; invRun = 0; hist = []; saluteSize = saluteFrom = athlete = last = null;
+  $('manual').textContent = 'Manual start';
+}
+
+// ---- camera: any of the device's cameras (iPhone: front, back, ultra wide = 0.5×, …), remembered here ----
+const CAMERA_KEY = 'handstand.camera';
+
+async function openCamera(deviceId) {
+  const get = choice => navigator.mediaDevices.getUserMedia({ audio: false, video: { width: { ideal: 640 }, height: { ideal: 480 }, ...choice } });
+  if (deviceId) try { return await get({ deviceId: { exact: deviceId } }); } catch {}   // gone: use the default
+  return get({ facingMode: { ideal: 'environment' } });
+}
+
+function useStream(s) {
+  stream = s;
+  $('video').srcObject = s;
+  // the front camera is shown mirrored like a selfie; detection only compares positions, so it doesn't mind
+  $('stage').classList.toggle('mirror', s.getVideoTracks()[0].getSettings().facingMode === 'user');
+}
+
+// Camera names are only available after camera permission, so the list is filled once a camera is open
+async function listCameras() {
+  const current = stream.getVideoTracks()[0].getSettings().deviceId;
+  const cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+  $('camera').replaceChildren(...cams.map((c, i) => new Option(c.label || `Camera ${i + 1}`, c.deviceId, false, c.deviceId === current)));
+  $('camera').hidden = cams.length < 2;
+}
+
+$('camera').onchange = async () => {
+  const id = $('camera').value;
+  try { localStorage.setItem(CAMERA_KEY, id); } catch {}
+  $('video').cancelVideoFrameCallback(frameReq);
+  stream.getTracks().forEach(t => t.stop());
+  resetDetection();   // a different view: she salutes again
+  try {
+    const s = await openCamera(id);
+    if (!live) return s.getTracks().forEach(t => t.stop());
+    useStream(s);
+    await $('video').play();
+    if (landmarker) frameReq = $('video').requestVideoFrameCallback(onFrame);
+  } catch (err) {
+    console.error(err);
+    $('status').textContent = 'That camera could not start – pick another';
+  }
+};
 
 function tick() {
   if (!live) return;
@@ -280,14 +410,16 @@ async function startSession() {
   tick();
   try { wake = await navigator.wakeLock?.request('screen'); } catch {}
   try {
-    const s = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } } });
+    let saved = null;
+    try { saved = localStorage.getItem(CAMERA_KEY); } catch {}
+    const s = await openCamera(saved);
     if (!live) return s.getTracks().forEach(t => t.stop());
-    stream = s;
-    $('video').srcObject = stream;
+    useStream(s);
     await $('video').play();
+    listCameras().catch(console.error);
     $('status').textContent = 'Loading pose model…';
     landmarker ??= await loadModel();
-    if (live) $('video').requestVideoFrameCallback(onFrame);
+    if (live) frameReq = $('video').requestVideoFrameCallback(onFrame);
   } catch (err) {
     console.error(err);
     $('status').textContent = 'No camera or pose model – use manual timing';
@@ -296,13 +428,12 @@ async function startSession() {
 
 function endSession() {
   live = false;
-  startTs = null; manual = false; invRun = 0; hist = [];
+  resetDetection();
   stream?.getTracks().forEach(t => t.stop());
   stream = $('video').srcObject = null;
   wake?.release();
-  $('stage').hidden = $('manual').hidden = true;
+  $('stage').hidden = $('manual').hidden = $('camera').hidden = true;
   $('toggle').textContent = 'Start session';
-  $('manual').textContent = 'Manual start';
 }
 
 $('toggle').onclick = () => live ? endSession() : startSession();
