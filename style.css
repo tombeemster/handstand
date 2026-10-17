@@ -1,0 +1,356 @@
+/* Handstand styles. Structure only for now; the visual design comes later.
+
+   1. Tokens
+   2. Base
+   3. Shared: buttons, attempt rows, scrolling pages
+   4. Tab bar
+   5. Home screen
+   6. Log screen
+   7. Record screen
+*/
+
+
+/* 1. Tokens ---------------------------------------------------------------- */
+
+:root {
+  /* colours */
+  --bg: #11131a;
+  --card: #1c1f2a;
+  --text: #f2f3f7;
+  --dim: #8b90a3;
+  --go: #3ddc84;
+  --on-go: #06240f;
+  --wait: #ffb347;
+  --gold: #ffe388;
+  --scrim: #000a;          /* dark see-through backing for text on the camera view */
+  --scrim-strong: #000c;
+
+  /* spacing */
+  --gap-s: 8px;
+  --gap-m: 16px;
+  --gap-l: 24px;
+  --gap-xl: 32px;
+
+  /* corners */
+  --radius-s: 2px;
+  --radius-m: 4px;
+  --radius-l: 8px;
+
+  /* iPhone notch and home bar */
+  --safe-top: env(safe-area-inset-top);
+  --safe-bottom: env(safe-area-inset-bottom);
+
+  /* the tab bar, plus the home bar below it */
+  --tabbar: 80px;
+  --tabbar-total: calc(var(--tabbar) + var(--safe-bottom));
+
+  --tile-edge: rgba(0, 0, 0, 0.1);
+  --tile-edge-light: rgba(196, 196, 196, 0.1);
+  --tile-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px var(--tile-edge), inset 0 -1px 0 0 var(--tile-edge), inset 0 0 0 1px var(--tile-edge-light);
+}
+
+
+/* 2. Base ------------------------------------------------------------------ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Vend Sans', system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 400;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+a {
+  color: inherit;
+}
+
+h1 {
+  margin: 0;
+  padding: var(--gap-m) 0 var(--gap-s);
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: 0.2em;
+}
+
+h2 {
+  margin: 24px 0 var(--gap-s);
+  font-size: 15px;
+  color: var(--dim);
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--card);
+  border-radius: var(--radius-s);
+  box-shadow: var(--tile-shadow);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+
+/* 3. Shared ---------------------------------------------------------------- */
+
+button {
+  padding: var(--gap-m);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+}
+
+button.primary {
+  background: var(--go);
+  color: var(--on-go);
+}
+
+/* An attempt: time, flags, duration, and in the log a delete button */
+li {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-s);
+  margin-bottom: var(--gap-s);
+  padding: var(--gap-m);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+li.best {
+  outline: 2px solid var(--gold);
+}
+
+li time {
+  flex: 1;
+  font-size: 14px;
+  color: var(--dim);
+}
+
+li small {
+  color: var(--wait);
+}
+
+li strong {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+li button {
+  padding: 4px 10px;
+  background: none;
+  color: var(--dim);
+}
+
+
+/* Home and log are scrolling pages, ending above the tab bar */
+#home,
+#log {
+  padding: var(--safe-top) var(--gap-s) calc(var(--tabbar-total) + var(--gap-m));
+}
+
+
+/* 4. Tab bar: fixed at the bottom of every screen, three equal tabs -------- */
+
+#tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: var(--tabbar-total);
+  padding-bottom: var(--safe-bottom);
+  background: var(--bg);
+  border-top: 1px solid var(--tile-edge-light);
+}
+
+#tabs a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dim);
+}
+
+#tabs a[aria-current] {
+  color: var(--text);
+}
+
+#tabs svg {
+  width: 28px;
+  height: 28px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+#tabs .dot {
+  fill: currentColor;
+  stroke: none;
+}
+
+
+/* 5. Home screen ----------------------------------------------------------- */
+
+#chart {
+  margin: 0;
+  color: var(--go);        /* line and dots */
+  background: var(--card);
+  border-radius: var(--radius-m);
+  padding: var(--gap-m);
+  margin-bottom: var(--gap-s);
+  box-shadow: var(--tile-shadow);
+}
+
+#chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-size: 11px;
+  fill: var(--dim);        /* axis labels */
+}
+
+#pb {
+  margin: var(--gap-s) 0;
+  padding: var(--gap-l);
+  border-radius: var(--radius-m);
+  background: var(--card);
+  box-shadow: var(--tile-shadow);
+  color: var(--dim);
+  text-align: center;
+}
+
+#pb b {
+  display: block;
+  font-size: 2rem;
+  font-weight: 400;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+#more {
+  display: block;
+  margin: var(--gap-xl);
+  color: var(--dim);
+  text-align: center;
+}
+
+/* 6. Log screen ------------------------------------------------------------ */
+
+#export {
+  width: 100%;
+  margin-top: 24px;
+}
+
+
+/* 7. Record screen: the camera fills the screen above the tab bar, everything else floats on top */
+
+#record {
+  position: fixed;
+  inset: 0 0 var(--tabbar-total) 0;
+  background: #000;
+}
+
+#record h1 {
+  position: absolute;
+  top: var(--safe-top);
+  left: 0;
+  right: 0;
+  text-shadow: 0 1px 6px #000;
+}
+
+#stage,
+#stage video,
+#stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#stage video,
+#stage canvas {
+  object-fit: contain;     /* the whole camera frame, so framing hints match what you see */
+}
+
+.mirror video,
+.mirror canvas {
+  transform: scaleX(-1);   /* front camera, like a selfie */
+}
+
+#status,
+#debug {
+  position: absolute;
+  top: calc(64px + var(--safe-top));
+  background: var(--scrim);
+}
+
+#status {
+  left: var(--gap-s);
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 14px;
+}
+
+#debug {
+  right: var(--gap-s);
+  margin: 0;
+  padding: 4px var(--gap-s);
+  border-radius: var(--radius-m);
+  font: 12px/1.3 ui-monospace, monospace;
+}
+
+#notice {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: var(--gap-s) 14px;
+  border-radius: var(--radius-m);
+  background: var(--scrim-strong);
+}
+
+#controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--gap-l);
+}
+
+#timer {
+  font-size: 5rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  text-shadow: 0 2px 12px #000;
+}
+
+#timer.record {
+  color: var(--gold);
+}
+
+/* camera switch on the right */
+#controls nav {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 24px;
+}
+
+#camera {
+  background: none;
+  font-size: 24px;
+}
