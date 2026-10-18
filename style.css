@@ -5,7 +5,7 @@
    3. Shared: buttons, attempt rows, scrolling pages
    4. Tab bar
    5. Home screen
-   6. Log screen
+   6. Day cards and log screen
    7. Record screen
 */
 
@@ -15,7 +15,7 @@
 :root {
   /* colours */
   --bg: #11131a;
-  --card: #1c1f2a;
+  --card: #181a24;
   --text: #f2f3f7;
   --dim: #8b90a3;
   --go: #3ddc84;
@@ -40,9 +40,10 @@
   --safe-top: env(safe-area-inset-top);
   --safe-bottom: env(safe-area-inset-bottom);
 
-  /* the tab bar, plus the home bar below it */
-  --tabbar: 80px;
-  --tabbar-total: calc(var(--tabbar) + var(--safe-bottom));
+  /* the floating tab bar, and all the space it takes at the bottom of the screen: the bar itself,
+     the gap under it and the iPhone home bar below that */
+  --tabbar: 64px;
+  --tabbar-total: calc(var(--tabbar) + var(--gap-s) + var(--safe-bottom));
 
   --tile-edge: rgba(0, 0, 0, 0.1);
   --tile-edge-light: rgba(196, 196, 196, 0.1);
@@ -69,22 +70,17 @@ body {
 
 a {
   color: inherit;
+  text-decoration: none;
 }
 
 h1 {
   margin: 0;
-  padding: var(--gap-m) 0 var(--gap-s);
+  padding: var(--gap-m) 0;
   font-size: 1rem;
   font-weight: 700;
   text-transform: uppercase;
   text-align: center;
   letter-spacing: 0.2em;
-}
-
-h2 {
-  margin: 24px 0 var(--gap-s);
-  font-size: 15px;
-  color: var(--dim);
 }
 
 ul {
@@ -103,6 +99,10 @@ ul {
 
 /* 3. Shared ---------------------------------------------------------------- */
 
+/* Record and average: one colour each, shared by the tiles and the chart */
+.series-record { --series: var(--gold); }
+.series-avg { --series: var(--text); }
+
 button {
   padding: var(--gap-m);
   border: 0;
@@ -118,12 +118,11 @@ button.primary {
   color: var(--on-go);
 }
 
-/* An attempt: time, flags, duration, and in the log a delete button */
+/* An attempt: time of day on the left, duration on the right */
 li {
   display: flex;
   align-items: center;
   gap: var(--gap-s);
-  margin-bottom: var(--gap-s);
   padding: var(--gap-m);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
@@ -134,7 +133,6 @@ li.best {
 
 li time {
   flex: 1;
-  font-size: 14px;
   color: var(--dim);
 }
 
@@ -143,22 +141,15 @@ li small {
 }
 
 li strong {
-  font-size: 20px;
   font-variant-numeric: tabular-nums;
   font-weight: 400;
-}
-
-li button {
-  padding: 4px 10px;
-  background: none;
-  color: var(--dim);
 }
 
 
 /* Home and log are scrolling pages, ending above the tab bar */
 #home,
 #log {
-  padding: var(--safe-top) var(--gap-s) calc(var(--tabbar-total) + var(--gap-m));
+  padding: var(--safe-top) var(--gap-s) calc(var(--tabbar-total) + var(--gap-s));
 }
 
 
@@ -166,41 +157,41 @@ li button {
 
 #tabs {
   position: fixed;
+  bottom: calc(var(--gap-s) + var(--safe-bottom));   /* floats just above the iPhone home bar */
   left: 0;
   right: 0;
-  bottom: 0;
   z-index: 1;
+  width: fit-content;      /* as wide as its tabs, and with the auto margins centred on screen */
+  margin-inline: auto;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  height: var(--tabbar-total);
-  padding-bottom: var(--safe-bottom);
+  height: var(--tabbar);
+  padding-inline: var(--gap-m);
+  border-radius: 40px;
   background: var(--bg);
-  border-top: 1px solid var(--tile-edge-light);
+  box-shadow: var(--tile-shadow);
 }
 
 #tabs a {
   display: flex;
+  width: 64px;
   align-items: center;
   justify-content: center;
   color: var(--dim);
 }
 
 #tabs a[aria-current] {
-  color: var(--text);
+  color: var(--gold);
 }
 
 #tabs svg {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
   stroke-linecap: round;
-}
-
-#tabs .dot {
-  fill: currentColor;
-  stroke: none;
+  stroke-linejoin: round;
 }
 
 
@@ -208,11 +199,10 @@ li button {
 
 #chart {
   margin: 0;
-  color: var(--go);        /* line and dots */
   background: var(--card);
   border-radius: var(--radius-m);
   padding: var(--gap-m);
-  margin-bottom: var(--gap-s);
+  margin: var(--gap-s) 0;
   box-shadow: var(--tile-shadow);
 }
 
@@ -224,8 +214,57 @@ li button {
   fill: var(--dim);        /* axis labels */
 }
 
-#pb {
-  margin: var(--gap-s) 0;
+#chart .axis {
+  stroke: var(--dim);
+  opacity: 0.3;
+}
+
+
+#chart .line {
+  fill: none;
+  stroke: var(--series);
+  stroke-width: 1;
+}
+
+/* the overall average: dashed, straight across, and a little heavier than the gridlines */
+#chart .average {
+  stroke-dasharray: 4 4;
+  stroke-width: 1.5;
+}
+
+/* a faint line at each axis label */
+#chart .grid {
+  stroke: var(--dim);
+  opacity: 0.15;
+}
+
+/* under the daily-best line: the series colour fading out downwards */
+#chart .area {
+  stroke: none;
+}
+
+#chart .fill-top {
+  stop-color: var(--series);
+  stop-opacity: 0.2;
+}
+
+#chart .fill-bottom {
+  stop-color: var(--series);
+  stop-opacity: 0;
+}
+
+#chart circle {
+  fill: var(--series);
+}
+
+/* Record and week average, side by side */
+#tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap-s);
+}
+
+.tile {
   padding: var(--gap-l);
   border-radius: var(--radius-m);
   background: var(--card);
@@ -234,22 +273,56 @@ li button {
   text-align: center;
 }
 
-#pb b {
+/* the record tile's dot: the same mark as a record day in the chart */
+.tile .dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: var(--gap-s);
+  border-radius: 50%;
+  vertical-align: middle;
+  background: var(--series);
+}
+
+.tile b {
   display: block;
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 400;
-  color: var(--text);
+  color: var(--series);
   font-variant-numeric: tabular-nums;
 }
 
-#more {
-  display: block;
-  margin: var(--gap-xl);
-  color: var(--dim);
+
+/* 6. Day cards (home and log) and the log screen --------------------------- */
+
+/* One card per day, styled like the home tiles: the date on top, then that day's attempts */
+.day {
+  margin-bottom: var(--gap-s);
+  border-radius: var(--radius-m);
+  background: var(--card);
+  box-shadow: var(--tile-shadow);
+}
+
+/* same lettering as the tiles' "Record" and "Average" */
+.day-label {
+  padding: var(--gap-m) var(--gap-m);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   text-align: center;
 }
 
-/* 6. Log screen ------------------------------------------------------------ */
+/* the home screen's "All attempts" link, at the bottom of the last card: lettered like the date.
+   The last attempt's line above it already separates the two. */
+.day-footer {
+  display: block;
+  padding: var(--gap-m);
+  text-align: center;
+}
+
+/* the list is part of the day card, not a card of its own */
+.day ul {
+  background: none;
+  box-shadow: none;
+}
 
 #export {
   width: 100%;
@@ -257,11 +330,11 @@ li button {
 }
 
 
-/* 7. Record screen: the camera fills the screen above the tab bar, everything else floats on top */
+/* 7. Record screen: the camera fills the whole screen, behind the tab bar; everything else floats on top */
 
 #record {
   position: fixed;
-  inset: 0 0 var(--tabbar-total) 0;
+  inset: 0;
   background: #000;
 }
 
@@ -328,7 +401,7 @@ li button {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: var(--gap-l);
+  bottom: calc(var(--tabbar-total) + var(--gap-s));   /* clear of the tab bar */
 }
 
 #timer {

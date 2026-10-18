@@ -6,7 +6,7 @@ const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/p
 const NUM_POSES = 1;
 const BONES = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
 const KEY = 'handstand.attempts', CAMERA_KEY = 'handstand.camera';
-const LATEST = 5;   // attempts on the home screen
+const LATEST = 5;   // at most this many attempts on the home screen, all from her last practice day
 
 const $ = id => document.getElementById(id);
 const fmt = ms => (ms / 1000).toFixed(2);
@@ -16,6 +16,17 @@ const localIso = d => new Date(d - d.getTimezoneOffset() * 60000).toISOString().
 // ---- log (newest first) ----
 let attempts = JSON.parse(localStorage.getItem(KEY) || '[]');
 const best = () => Math.max(0, ...attempts.map(a => a.duration_ms));
+// The attempts that set a new all-time record when they happened, oldest first
+function recordIds() {
+  const ids = new Set();
+  let record = 0;
+  for (const a of [...attempts].sort((p, q) => p.started_at.localeCompare(q.started_at))) {
+    if (a.duration_ms > record) { record = a.duration_ms; ids.add(a.id); }
+  }
+  return ids;
+}
+// The average of every attempt ever: shown in the average tile and as the chart's dashed line
+const overallAverage = () => attempts.length ? attempts.reduce((s, a) => s + a.duration_ms, 0) / attempts.length : null;
 
 function save() {
   localStorage.setItem(KEY, JSON.stringify(attempts));
@@ -23,14 +34,36 @@ function save() {
   renderLog();
 }
 
-// One attempt as a list row, on the home screen (with date) and in the log (with delete)
-function row(a, pb, inLog) {
-  return `<li class="${a.duration_ms === pb ? 'best' : ''}">
-    <time>${inLog ? a.started_at.slice(11) : a.started_at.replace('T', ' ').slice(0, 16)}</time>
-    <small>${a.method === 'manual' ? 'manual' : ''}${a.flagged ? ' ⚠ check' : ''}</small>
-    <strong>${fmt(a.duration_ms)} s</strong>
-    ${inLog ? `<button data-id="${a.id}" aria-label="Delete">✕</button>` : ''}
-  </li>`;
+// When an attempt started, day first: 18/10/2026 – 07:16:09
+const stamp = a => `${a.started_at.slice(8, 10)}/${a.started_at.slice(5, 7)}/${a.started_at.slice(0, 4)} – ${a.started_at.slice(11)}`;
+
+// Attempts as one card per day, on the home screen and in the log: the date on top, then each
+// attempt's time of day and duration. Attempts that set a record at the time are marked "best".
+// footer: shown at the bottom of the last card.
+function dayCards(list, footer = '') {
+  const records = recordIds(), byDay = new Map();
+  for (const a of list) {
+    const day = a.started_at.slice(0, 10);
+    byDay.set(day, [...(byDay.get(day) ?? []), a]);
+  }
+  return [...byDay].map(([day, items], i, days) => `
+    <div class="day">
+      <div class="day-label">${new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+      <ul>${items.map(a => `<li class="${records.has(a.id) ? 'best' : ''}" data-id="${a.id}">
+        <time>${stamp(a)}</time><strong>${fmt(a.duration_ms)}s</strong>
+      </li>`).join('')}</ul>
+      ${i === days.length - 1 ? footer : ''}
+    </div>`).join('');
+}
+
+// Tapping an attempt, on the home screen or in the log, offers to delete it (false starts, mis-timed holds)
+function onAttemptTap(e) {
+  const li = e.target.closest('li[data-id]');
+  const a = li && attempts.find(a => a.id === li.dataset.id);
+  if (a && confirm(`Delete the attempt of ${stamp(a)} (${fmt(a.duration_ms)}s)?`)) {
+    attempts = attempts.filter(x => x.id !== a.id);
+    save();
+  }
 }
 
 // ---- screens: #home (or none), #record, #log, one tab each. The camera is on only on #record. ----
@@ -53,37 +86,69 @@ addEventListener('hashchange', route);
 function renderHome() {
   const pb = best();
   $('best').textContent = pb ? fmt(pb) + ' s' : '–';
-  $('latest').innerHTML = attempts.slice(0, LATEST).map(a => row(a, pb, false)).join('');
-  $('more').hidden = attempts.length === 0;
+  const avg = overallAverage();
+  $('average').textContent = avg ? fmt(avg) + ' s' : '–';
+  // one card: the latest attempts of the last day she practised, at most LATEST
+  const lastDay = attempts.reduce((day, a) => a.started_at > day ? a.started_at : day, '').slice(0, 10);
+  const latest = attempts.filter(a => a.started_at.startsWith(lastDay))
+    .sort((p, q) => q.started_at.localeCompare(p.started_at)).slice(0, LATEST);
+  $('latest').innerHTML = dayCards(latest, '<a class="day-footer" href="#log">All attempts →</a>');
   renderChart();
 }
 
-// Average duration per day over the last 7 days, today on the right. A day without attempts
-// leaves a gap in the line rather than counting as zero.
+// Over the last 7 days, today on the right:
+// - daily best: the longest hold of each day, with the area under it. A day without attempts keeps
+//   the last day's best (a flat line), also when that day was before this week. A dot marks each
+//   day she broke her all-time record.
+// - average: the average of all her attempts ever, as a dashed horizontal line.
+// Only before her very first attempt is there nothing to draw.
 function renderChart() {
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); return d; });
-  const avgs = days.map(d => {
-    const ms = attempts.filter(a => a.started_at.startsWith(localIso(d).slice(0, 10))).map(a => a.duration_ms);
-    return ms.length ? ms.reduce((s, m) => s + m, 0) / ms.length : null;
-  });
-  const top = Math.max(1000, ...avgs.filter(v => v !== null));
-  const W = 320, H = 140, L = 40, R = 10, T = 10, B = 24;
+  const dayKey = d => localIso(d).slice(0, 10);
+  const durationsOn = day => attempts.filter(a => a.started_at.startsWith(day)).map(a => a.duration_ms);
+
+  // what stood before this week: the record so far, and the best of the last day with attempts
+  const firstDay = dayKey(days[0]);
+  const earlier = attempts.filter(a => a.started_at < firstDay);
+  let record = Math.max(0, ...earlier.map(a => a.duration_ms));
+  const lastBefore = earlier.reduce((day, a) => a.started_at > day ? a.started_at : day, '');
+  let dayBest = lastBefore ? Math.max(...durationsOn(lastBefore.slice(0, 10))) : null;
+
+  const bests = [], broken = [];
+  for (const d of days) {
+    const ms = durationsOn(dayKey(d));
+    if (ms.length) dayBest = Math.max(...ms);
+    broken.push(ms.length > 0 && dayBest > record);
+    record = Math.max(record, dayBest ?? 0);
+    bests.push(dayBest);
+  }
+  const avg = overallAverage();
+  // the scale: up to the next even number of seconds above the best, labelled every 2 s
+  const top = Math.max(2000, Math.ceil(Math.max(0, ...bests.filter(v => v !== null)) / 2000) * 2000);
+  const ticks = Array.from({ length: top / 2000 }, (_, i) => (i + 1) * 2000);
+  // L leaves just room for the axis labels ("8 s", later "10 s"), so the plot sits centred in the tile
+  const W = 320, H = 140, L = 30, R = 8, T = 10, B = 24;
   const x = i => L + i * (W - L - R) / 6, y = v => T + (1 - v / top) * (H - T - B);
-  let lines = '', run = [];
-  avgs.forEach((v, i) => {
-    if (v !== null) run.push(`${x(i)},${y(v)}`);
-    if (v === null || i === avgs.length - 1) {
-      if (run.length > 1) lines += `<polyline points="${run.join(' ')}" fill="none" stroke="currentColor" stroke-width="2"/>`;
-      run = [];
-    }
-  });
-  const dots = avgs.map((v, i) => v === null ? '' : `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="currentColor"/>`).join('');
+
+  // the daily bests as a straight line from day to day, the area under it fading out downwards
+  const pts = bests.map((v, i) => v === null ? null : [x(i), y(v)]).filter(Boolean);   // nulls only lead
+  let best = '';
+  if (pts.length > 1) {
+    const line = 'M' + pts.map(([px, py]) => `${px},${py}`).join(' L');
+    best += `<linearGradient id="best-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="fill-top"/><stop offset="1" class="fill-bottom"/></linearGradient>
+      <path class="area" fill="url(#best-fill)" d="${line} L${pts.at(-1)[0]},${y(0)} L${pts[0][0]},${y(0)} Z"/>
+      <path class="line" d="${line}"/>`;
+  }
+  best += bests.map((v, i) => broken[i] ? `<circle cx="${x(i)}" cy="${y(v)}" r="3"/>` : '').join('');
+
   const labels = days.map((d, i) => `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${d.toLocaleDateString(undefined, { weekday: 'narrow' })}</text>`).join('');
-  $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Average handstand per day, last 7 days">
-    <line x1="${L}" y1="${y(0)}" x2="${W - R}" y2="${y(0)}" stroke="currentColor" opacity="0.3"/>
-    <text x="${L - 6}" y="${y(top) + 4}" text-anchor="end">${fmt(top)} s</text>
-    <text x="${L - 6}" y="${y(0) + 4}" text-anchor="end">0</text>
-    ${lines}${dots}${labels}
+  $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Best hold per day over the last 7 days, and the overall average">
+    <line class="axis" x1="${L}" y1="${y(0)}" x2="${W - R}" y2="${y(0)}"/>
+    ${ticks.map(v => `<line class="grid" x1="${L}" y1="${y(v)}" x2="${W - R}" y2="${y(v)}"/>
+      <text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v / 1000} s</text>`).join('')}
+    <g class="series-record">${best}</g>
+    ${avg ? `<g class="series-avg"><line class="line average" x1="${x(0)}" y1="${y(avg)}" x2="${x(6)}" y2="${y(avg)}"/></g>` : ''}
+    ${labels}
   </svg>`;
 }
 
@@ -92,20 +157,10 @@ $('tabs').onclick = unlockAudio;
 
 // ---- log: all attempts, grouped per day ----
 function renderLog() {
-  const pb = best(), byDay = new Map();
-  for (const a of attempts) {
-    const day = a.started_at.slice(0, 10);
-    byDay.set(day, [...(byDay.get(day) ?? []), a]);
-  }
-  $('days').innerHTML = [...byDay].map(([day, list]) => `
-    <h2>${new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</h2>
-    <ul>${list.map(a => row(a, pb, true)).join('')}</ul>`).join('') || '<p>No attempts yet.</p>';
+  $('days').innerHTML = dayCards(attempts) || '<p>No attempts yet.</p>';
 }
 
-$('days').onclick = e => {
-  const id = e.target.dataset.id;
-  if (id && confirm('Delete this attempt?')) { attempts = attempts.filter(a => a.id !== id); save(); }
-};
+$('days').onclick = $('latest').onclick = onAttemptTap;
 
 $('export').onclick = () => {
   const csv = ['id,started_at,duration_ms,method,flagged',
