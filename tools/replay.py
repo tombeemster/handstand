@@ -14,7 +14,8 @@ import cv2
 import mediapipe as mp
 from mediapipe.tasks.python import BaseOptions, vision
 
-VIS, ANKLE_VIS, CONFIRM, LOST_MS, MIN_MS, HISTORY_MS, MERGE_MS = 0.5, 0.3, 3, 500, 1000, 2000, 600
+VIS, ANKLE_VIS, CONFIRM, LOST_MS, MIN_MS, HISTORY_MS, MERGE_MS = 0.5, 0.3, 3, 500, 1000, 3000, 600
+STAND_MS = 1500  # stood upright at most this long before the handstand is confirmed
 SPEED, LOCK_MS, NUM_POSES = 1.5, 2000, 1   # 2 was tried: one body reported twice, worse
 
 CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.cache')
@@ -91,6 +92,16 @@ def detect(data):
         attempts.append({'start': start, 'end': end, 'flagged': flagged})
         start = None; inv_run = 0
 
+    def standing(lm):
+        if not lm or any(lm[i][2] <= VIS for i in (0, 11, 12, 23, 24)):
+            return False
+        ankles = [lm[i][1] for i in (27, 28) if lm[i][2] > ANKLE_VIS]
+        if not ankles:
+            return False
+        shoulder, hip = (lm[11][1] + lm[12][1]) / 2, (lm[23][1] + lm[24][1]) / 2
+        torso = hip - shoulder
+        return torso > 0.02 and lm[0][1] < shoulder and max(ankles) - hip >= torso
+
     def upright(lm):
         def centre(ids, vis):
             ps = [lm[i] for i in ids if lm[i][2] > vis]
@@ -105,13 +116,12 @@ def detect(data):
         tracked = bool(hips and ankles)
         hip = sum(hips) / len(hips) if hips else 0
         wrist = max(wrists) if wrists else None
-        hist.append({'ts': ts, 'wrist': wrist, 'feetDown': tracked and any(y > hip for y in ankles)})
+        hist.append({'ts': ts, 'wrist': wrist, 'standing': standing(lm)})
         while hist[0]['ts'] < ts - HISTORY_MS:
             hist.pop(0)
 
         if start is None:
-            inverted = (tracked and wrist is not None and all(y < hip for y in ankles) and hip < wrist
-                        and upright(lm) and any(f['feetDown'] for f in hist))
+            inverted = tracked and wrist is not None and all(y < hip for y in ankles) and hip < wrist and upright(lm)
             inv_run = inv_run + 1 if inverted else 0
             if inv_run >= CONFIRM:
                 tol = (wrist - hip) * 0.2
@@ -122,9 +132,12 @@ def detect(data):
                     if abs(f['wrist'] - wrist) > tol:
                         break
                     t = f['ts']
-                if attempts and attempts[-1]['end'] is not None and t - attempts[-1]['end'] < MERGE_MS:
+                resumed = bool(attempts) and attempts[-1]['end'] is not None and t - attempts[-1]['end'] < MERGE_MS
+                kicked_up = any(f['standing'] and ts - f['ts'] <= STAND_MS for f in hist)
+                if resumed:
                     t = attempts.pop()['start']   # same attempt, continued
-                start = t; seen_ts = ts; down_run = 0
+                if resumed or kicked_up:
+                    start = t; seen_ts = ts; down_run = 0
             continue
         # head above hips mid-attempt: the model fitted her the wrong way up, its "wrists" are her feet
         flipped = bool(lm) and lm[0][2] > VIS and lm[0][1] < hip

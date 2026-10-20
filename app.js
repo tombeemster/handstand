@@ -123,9 +123,12 @@ function renderChart() {
     bests.push(dayBest);
   }
   const avg = overallAverage();
-  // the scale: up to the next even number of seconds above the best, labelled every 2 s
-  const top = Math.max(2000, Math.ceil(Math.max(0, ...bests.filter(v => v !== null)) / 2000) * 2000);
-  const ticks = Array.from({ length: top / 2000 }, (_, i) => (i + 1) * 2000);
+  // the scale: gridlines and labels at an even number of whole seconds apart, at most 8 of them,
+  // the top one at or just above the best (6.7 s: 2, 4, 6, 8 · 72 s: 10, 20, … 80)
+  const highest = Math.max(1, ...bests.filter(v => v !== null));
+  const step = [2, 4, 10, 20, 30, 60, 120, 300, 600].map(s => s * 1000).find(s => highest <= s * 8) ?? Math.ceil(highest / 8 / 60000) * 60000;
+  const top = Math.ceil(highest / step) * step;
+  const ticks = Array.from({ length: top / step }, (_, i) => (i + 1) * step);
   // L leaves just room for the axis labels ("8 s", later "10 s"), so the plot sits centred in the tile
   const W = 320, H = 140, L = 30, R = 8, T = 10, B = 24;
   const x = i => L + i * (W - L - R) / 6, y = v => T + (1 - v / top) * (H - T - B);

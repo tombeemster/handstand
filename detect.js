@@ -3,7 +3,12 @@
 
 // Ankles get a lower bar: in loose trousers the model places them right but scores them ~0.3–0.45
 export const VIS = 0.5, ANKLE_VIS = 0.3, MIN_MS = 1000;
-const CONFIRM = 3, LOST_MS = 500, HISTORY_MS = 2000;
+const CONFIRM = 3, LOST_MS = 500, HISTORY_MS = 3000;
+// A real handstand is kicked up from standing: she stood upright with straight legs at most STAND_MS
+// before the handstand is confirmed. Measured: real kick-ups 0.17–0.83 s (phone), 1.2–1.27 s (15 fps
+// webcam); a headstand from kneeling with the hands already down 2.9 s, other headstands never stood.
+// (Measuring to when the hands land instead was tried: hands placed while kneeling fooled it.)
+const STAND_MS = 1500;
 // An attempt that restarts within MERGE_MS of ending was one attempt: nobody lands and kicks up
 // again that fast, but the model can lose her for a moment (e.g. someone walking past)
 const MERGE_MS = 600;
@@ -68,6 +73,16 @@ export function createDetector({ onStart, onEnd }) {
     return pick;
   }
 
+  // Standing upright with straight legs: head above shoulders above hips, and the ankles at least
+  // one torso length (shoulders to hips) below the hips. Sitting or crouching puts the feet near the hips.
+  function standing(lm) {
+    if (!lm || [0, 11, 12, 23, 24].some(i => lm[i].visibility <= VIS)) return false;
+    const ankles = [27, 28].filter(i => lm[i].visibility > ANKLE_VIS).map(i => lm[i].y);
+    if (!ankles.length) return false;
+    const shoulder = (lm[11].y + lm[12].y) / 2, hip = (lm[23].y + lm[24].y) / 2, torso = hip - shoulder;
+    return torso > 0.02 && lm[0].y < shoulder && Math.max(...ankles) - hip >= torso;
+  }
+
   // Within 45° of vertical, wrists to ankles, in pixels. A phantom "person" lying sideways
   // (e.g. found in the clutter on a table) passes the top-to-bottom order checks by a hair.
   function upright(lm) {
@@ -93,13 +108,11 @@ export function createDetector({ onStart, onEnd }) {
     const hip = hips.reduce((a, b) => a + b, 0) / hips.length;
     const wrist = wrists.length ? Math.max(...wrists) : null;   // image y grows downward
 
-    hist.push({ ts, wrist, feetDown: tracked && ankles.some(y => y > hip) });
+    hist.push({ ts, wrist, standing: standing(lm) });
     while (hist[0].ts < ts - HISTORY_MS) hist.shift();
 
     if (startTs === null) {
-      // a real attempt starts with a kick-up: feet below the hips shortly before. Static objects
-      // mistaken for a person (e.g. pillows) never do that, so they can't start an attempt.
-      const inverted = tracked && wrist !== null && ankles.every(y => y < hip) && hip < wrist && upright(lm) && hist.some(f => f.feetDown);
+      const inverted = tracked && wrist !== null && ankles.every(y => y < hip) && hip < wrist && upright(lm);
       invRun = inverted ? invRun + 1 : 0;
       if (invRun >= CONFIRM) {
         // backdate to the first frame the wrists were already planted where they are now
@@ -112,8 +125,12 @@ export function createDetector({ onStart, onEnd }) {
           t = hist[i].ts;
         }
         const resumed = last !== null && t - last.end < MERGE_MS;   // same attempt, continued
-        startTs = resumed ? last.start : t; seenTs = ts; downRun = 0;
-        onStart(startTs, resumed);
+        // kicked up from standing (see STAND_MS); static phantoms (pillows) never stand either
+        const kickedUp = hist.some(f => f.standing && ts - f.ts <= STAND_MS);
+        if (resumed || kickedUp) {
+          startTs = resumed ? last.start : t; seenTs = ts; downRun = 0;
+          onStart(startTs, resumed);
+        }
       }
     } else {
       // Head above the hips mid-attempt: the model has fitted her the wrong way up (after a dropped
