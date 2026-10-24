@@ -7,6 +7,7 @@
    5. Home screen
    6. Day cards and log screen
    7. Record screen
+   8. A day's page
 */
 
 
@@ -43,6 +44,8 @@
   /* the floating tab bar, and all the space it takes at the bottom of the screen: the bar itself,
      the gap under it and the iPhone home bar below that */
   --tabbar: 64px;
+  --tab: 56px;             /* each tab's width */
+  --tabbar-width: calc(3 * var(--tab) + 2 * var(--gap-m));
   --tabbar-total: calc(var(--tabbar) + var(--gap-s) + var(--safe-bottom));
 
   --tile-edge: rgba(0, 0, 0, 0.1);
@@ -99,8 +102,9 @@ ul {
 
 /* 3. Shared ---------------------------------------------------------------- */
 
-/* Record and average: one colour each, shared by the tiles and the chart */
+/* All-time record, daily highest and average: one colour each, shared by the tiles and the chart */
 .series-record { --series: var(--gold); }
+.series-best { --series: var(--text); }
 .series-avg { --series: var(--text); }
 
 button {
@@ -127,8 +131,17 @@ li {
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-li.best {
-  outline: 2px solid var(--gold);
+
+/* Gold is for records only: an attempt that set a record at its time */
+li.best time, li.best strong {
+  color: var(--gold);
+}
+
+/* the day's highest attempt on a day's page, when it isn't a record: a white outline to spot it
+   while scrolling (drawn inside the row, so the rows don't shift) */
+li.top {
+  outline: 1px solid var(--text);
+  outline-offset: -1px;
 }
 
 li time {
@@ -146,9 +159,10 @@ li strong {
 }
 
 
-/* Home and log are scrolling pages, ending above the tab bar */
+/* Home, the log and a day's page are scrolling pages, ending above the tab bar */
 #home,
-#log {
+#log,
+#day {
   padding: var(--safe-top) var(--gap-s) calc(var(--tabbar-total) + var(--gap-s));
 }
 
@@ -174,11 +188,12 @@ li strong {
 
 #tabs a {
   display: flex;
-  width: 64px;
+  width: var(--tab);
   align-items: center;
   justify-content: center;
   color: var(--dim);
 }
+
 
 #tabs a[aria-current] {
   color: var(--gold);
@@ -226,8 +241,8 @@ li strong {
   stroke-width: 1;
 }
 
-/* the overall average: dashed, straight across, and a little heavier than the gridlines */
-#chart .average {
+/* the overall average and the all-time record: dashed, straight across, a little heavier than the gridlines */
+#chart .dashed {
   stroke-dasharray: 4 4;
   stroke-width: 1.5;
 }
@@ -257,12 +272,13 @@ li strong {
   fill: var(--series);
 }
 
-/* Record and week average, side by side */
+/* All-time record and average side by side */
 #tiles {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--gap-s);
 }
+
 
 .tile {
   padding: var(--gap-l);
@@ -273,8 +289,8 @@ li strong {
   text-align: center;
 }
 
-/* the record tile's dot: the same mark as a record day in the chart */
-.tile .dot {
+/* the record day's dot in the Daily high list: the same dot as in the chart */
+.record-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
@@ -310,12 +326,40 @@ li strong {
   text-align: center;
 }
 
-/* the home screen's "All attempts" link, at the bottom of the last card: lettered like the date.
-   The last attempt's line above it already separates the two. */
+/* a card title on the left with a link on the right: the log's day cards */
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+}
+
+.card-header a {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* the home screen's "All attempts" link: the last row of the Daily highs card, centred */
 .day-footer {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   padding: var(--gap-m);
-  text-align: center;
+}
+
+/* the arrows: drawn like the other icons, sized to the text they follow */
+.card-header svg,
+.day-footer svg,
+.back svg {
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* the list is part of the day card, not a card of its own */
@@ -326,7 +370,7 @@ li strong {
 
 #export {
   width: 100%;
-  margin-top: 24px;
+  box-shadow: var(--tile-shadow);
 }
 
 
@@ -413,17 +457,93 @@ li strong {
 }
 
 #timer.record {
-  color: var(--gold);
+  color: var(--gold);   /* just set a new record */
 }
 
-/* camera switch on the right */
+/* lens choice, centred */
 #controls nav {
   display: flex;
-  justify-content: flex-end;
-  padding: 0 24px;
+  justify-content: center;
 }
 
-#camera {
+#zoom {
+  display: flex;
+  gap: var(--gap-s);
+  padding: 4px;
+  border-radius: 99px;
+  background: var(--scrim);
+}
+
+#zoom button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
   background: none;
-  font-size: 24px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+#zoom button[aria-pressed="true"] {
+  background: var(--scrim-strong);
+  color: var(--text);
+}
+
+/* Sound on/off and the front/back switch: tab-sized buttons level with the tab bar, each centred in
+   the space beside it. The space on the right starts half the bar's width right of the middle, so its
+   centre is at 75% + width / 4; the left one mirrors that at 25% - width / 4. */
+.beside-tabs {
+  position: absolute;
+  bottom: calc(var(--gap-s) + var(--safe-bottom));
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tab);
+  height: var(--tabbar);
+  padding: 0;
+  background: none;
+  color: var(--text);
+}
+
+#mute {
+  left: calc(25% - var(--tabbar-width) / 4 - var(--tab) / 2);
+}
+
+#flip {
+  left: calc(75% + var(--tabbar-width) / 4 - var(--tab) / 2);
+}
+
+/* the icon shows the current state: a speaker with waves, or crossed out when muted */
+#mute[aria-pressed="true"] .sound-on,
+#mute[aria-pressed="false"] .sound-off {
+  display: none;
+}
+
+.beside-tabs svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+/* 8. A day's page (#log/2026-10-23) ---------------------------------------- */
+
+#day {
+  position: relative;
+}
+
+/* back to the log: top left, level with the heading */
+.back {
+  position: absolute;
+  top: calc(var(--safe-top) + var(--gap-m));
+  left: var(--gap-m);
+  display: flex;
+  font-size: 24px;          /* the arrow is 1em, like the card arrows: 24 px here, like the other icons */
+  color: var(--dim);
 }

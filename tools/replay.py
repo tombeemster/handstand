@@ -15,6 +15,7 @@ import mediapipe as mp
 from mediapipe.tasks.python import BaseOptions, vision
 
 VIS, ANKLE_VIS, CONFIRM, LOST_MS, MIN_MS, HISTORY_MS, MERGE_MS = 0.5, 0.3, 3, 500, 1000, 3000, 600
+BACKDATE_MS = 2000   # the start is backdated at most this far; HISTORY_MS is longer for the standing check
 STAND_MS = 1500  # stood upright at most this long before the handstand is confirmed
 SPEED, LOCK_MS, NUM_POSES = 1.5, 2000, 1   # 2 was tried: one body reported twice, worse
 
@@ -92,15 +93,16 @@ def detect(data):
         attempts.append({'start': start, 'end': end, 'flagged': flagged})
         start = None; inv_run = 0
 
-    def standing(lm):
-        if not lm or any(lm[i][2] <= VIS for i in (0, 11, 12, 23, 24)):
+    def standing(lm):   # the head check only when the nose is visible (her back to the camera)
+        if not lm or any(lm[i][2] <= VIS for i in (11, 12, 23, 24)):
             return False
         ankles = [lm[i][1] for i in (27, 28) if lm[i][2] > ANKLE_VIS]
         if not ankles:
             return False
         shoulder, hip = (lm[11][1] + lm[12][1]) / 2, (lm[23][1] + lm[24][1]) / 2
         torso = hip - shoulder
-        return torso > 0.02 and lm[0][1] < shoulder and max(ankles) - hip >= torso
+        head_up = lm[0][2] <= VIS or lm[0][1] < shoulder
+        return torso > 0.02 and head_up and max(ankles) - hip >= torso
 
     def upright(lm):
         def centre(ids, vis):
@@ -127,6 +129,8 @@ def detect(data):
                 tol = (wrist - hip) * 0.2
                 t = ts
                 for f in reversed(hist):
+                    if ts - f['ts'] > BACKDATE_MS:
+                        break
                     if f['wrist'] is None:
                         continue
                     if abs(f['wrist'] - wrist) > tol:

@@ -3,7 +3,9 @@
 
 // Ankles get a lower bar: in loose trousers the model places them right but scores them ~0.3–0.45
 export const VIS = 0.5, ANKLE_VIS = 0.3, MIN_MS = 1000;
-const CONFIRM = 3, LOST_MS = 500, HISTORY_MS = 3000;
+// HISTORY_MS: how far back frames are kept, for the standing check (STAND_MS). The start is backdated
+// at most BACKDATE_MS, the 2 s it always had: keeping 3 s of frames shouldn't stretch hesitant starts.
+const CONFIRM = 3, LOST_MS = 500, HISTORY_MS = 3000, BACKDATE_MS = 2000;
 // A real handstand is kicked up from standing: she stood upright with straight legs at most STAND_MS
 // before the handstand is confirmed. Measured: real kick-ups 0.17–0.83 s (phone), 1.2–1.27 s (15 fps
 // webcam); a headstand from kneeling with the hands already down 2.9 s, other headstands never stood.
@@ -11,7 +13,7 @@ const CONFIRM = 3, LOST_MS = 500, HISTORY_MS = 3000;
 const STAND_MS = 1500;
 // An attempt that restarts within MERGE_MS of ending was one attempt: nobody lands and kicks up
 // again that fast, but the model can lose her for a moment (e.g. someone walking past)
-const MERGE_MS = 600;
+export const MERGE_MS = 600;
 // Lock: the first person seen is the athlete. After that only a pose near her last position counts
 // (reach grows by SPEED body-heights per second unseen), so phantoms and passers-by are skipped.
 // Unseen for LOCK_MS between attempts releases the lock: the next person seen is the athlete.
@@ -73,14 +75,17 @@ export function createDetector({ onStart, onEnd }) {
     return pick;
   }
 
-  // Standing upright with straight legs: head above shoulders above hips, and the ankles at least
-  // one torso length (shoulders to hips) below the hips. Sitting or crouching puts the feet near the hips.
+  // Standing upright with straight legs: shoulders above hips, and the ankles at least one torso length
+  // (shoulders to hips) below the hips. Sitting or crouching puts the feet near the hips. The head must
+  // be above the shoulders too, but only when it's visible: with her back to the camera the nose can
+  // score too low, and a real kick-up shouldn't be rejected for that.
   function standing(lm) {
-    if (!lm || [0, 11, 12, 23, 24].some(i => lm[i].visibility <= VIS)) return false;
+    if (!lm || [11, 12, 23, 24].some(i => lm[i].visibility <= VIS)) return false;
     const ankles = [27, 28].filter(i => lm[i].visibility > ANKLE_VIS).map(i => lm[i].y);
     if (!ankles.length) return false;
     const shoulder = (lm[11].y + lm[12].y) / 2, hip = (lm[23].y + lm[24].y) / 2, torso = hip - shoulder;
-    return torso > 0.02 && lm[0].y < shoulder && Math.max(...ankles) - hip >= torso;
+    const headUp = lm[0].visibility <= VIS || lm[0].y < shoulder;
+    return torso > 0.02 && headUp && Math.max(...ankles) - hip >= torso;
   }
 
   // Within 45° of vertical, wrists to ankles, in pixels. A phantom "person" lying sideways
@@ -119,7 +124,7 @@ export function createDetector({ onStart, onEnd }) {
         // (frames without wrists are skipped: the model drops single frames during a kick-up)
         const tol = (wrist - hip) * 0.2;
         let t = ts;
-        for (let i = hist.length - 1; i >= 0; i--) {
+        for (let i = hist.length - 1; i >= 0 && ts - hist[i].ts <= BACKDATE_MS; i--) {
           if (hist[i].wrist === null) continue;
           if (Math.abs(hist[i].wrist - wrist) > tol) break;
           t = hist[i].ts;
