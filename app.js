@@ -235,6 +235,15 @@ function cheer(done = () => {}) {
   cheerEl.play().catch(err => { console.error(err); beep([523, 659, 784, 1047]); setTimeout(done, 600); });
 }
 
+// For the debug box: is sound on, is the sound engine running, which voice would speak
+function soundState() {
+  if (muted) return 'sound off';
+  if (!('speechSynthesis' in window)) return `no speech · audio ${audio?.state ?? 'not started'}`;
+  const voices = speechSynthesis.getVoices(), dutch = voices.filter(v => v.lang.replace('_', '-').startsWith('nl'));
+  const voice = dutch.find(v => FEMALE_DUTCH.test(v.name)) ?? dutch[0];
+  return `audio ${audio?.state ?? 'not started'} · ${voices.length} voices · ${voice ? voice.name : 'no Dutch voice'}`;
+}
+
 // The time spoken in Dutch, a little faster than normal, by one of the device's own voices: a female
 // one if there is one. Voices don't say whether they're female, so these are the female Dutch voices
 // by name (iPhone: Claire, Ellen; Windows: Colette, Fenna; Chrome: Google Nederlands); otherwise any
@@ -265,6 +274,8 @@ $('mute').onclick = () => {
   if (muted) {   // also silence whatever is playing right now
     cheerEl.pause();
     if ('speechSynthesis' in window) speechSynthesis.cancel();
+  } else {
+    speak('Geluid aan');   // straight from the tap: also a quick check that speech works on this device
   }
   notice(muted ? 'Sound off' : 'Sound on');
 };
@@ -275,7 +286,10 @@ function unlockAudio() {
   audio.resume();
   if ('speechSynthesis' in window) {   // speech, too; and start loading the voices, which some browsers do lazily
     speechSynthesis.getVoices();
-    speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+    // iOS may skip an empty sentence without unlocking speech: say a space, silently
+    const silent = new SpeechSynthesisUtterance(' ');
+    silent.volume = 0;
+    speechSynthesis.speak(silent);
   }
   cheerEl.muted = true;
   cheerEl.play().then(() => { cheerEl.pause(); cheerEl.muted = false; }).catch(console.error);
@@ -421,6 +435,7 @@ function debug(now, lm, poses) {
     `${$('video').videoWidth}x${$('video').videoHeight}`,
     `${s.startTs === null ? 'idle' : 'up'}  inv ${s.invRun}/${s.confirm}  down ${s.downRun}/${s.confirm}`,
     `nose  ${v(0)}`, `wrist ${v(15, 16)}`, `hip   ${v(23, 24)}`, `ankle ${v(27, 28)}`,
+    soundState(),
   ].join('\n');
 }
 
