@@ -449,6 +449,7 @@ li strong {
 }
 
 #timer {
+  cursor: pointer;          /* tap to start and stop timing by hand */
   font-size: 5rem;
   font-weight: 400;
   font-variant-numeric: tabular-nums;

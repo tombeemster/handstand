@@ -210,29 +210,46 @@ $('export').onclick = () => {
 };
 
 // ---- sound ----
-let audio;
-function beep(notes) {
-  if (!audio) return;
-  let t = audio.currentTime;
-  for (const freq of notes) {
-    const osc = audio.createOscillator(), gain = audio.createGain();
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0.3, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
-    osc.connect(gain).connect(audio.destination);
-    osc.start(t); osc.stop(t + 0.18);
-    t += 0.13;
-  }
+let audio;   // the Web Audio engine, started by the first tap (unlockAudio)
+
+// Level-up chimes: every file in sounds/ whose name starts with a number of seconds ("04s-…") is the
+// chime for a hold longer than that; the longest level reached plays when the timer stops. Adding,
+// removing or renaming a file is all it takes. Credits in README.md.
+// A page can't list a folder itself, so the server does: GitHub's file list for the repo on the live
+// site, the folder listing of `npx serve` locally. Both answer in JSON, as [{ name }] or { files: [{ base }] }.
+async function soundFiles() {
+  const [owner] = location.hostname.split('.'), [, repo] = location.pathname.split('/');
+  const url = location.hostname.endsWith('.github.io') ? `https://api.github.com/repos/${owner}/${repo}/contents/sounds` : 'sounds/';
+  const list = await (await fetch(url, { headers: { Accept: 'application/json' } })).json();
+  return (list.files ?? list).map(f => f.name ?? f.base).filter(name => /^\d+s.*\.(wav|mp3|m4a|ogg)$/i.test(name));
 }
 
-// New-best sound: "YOO-HOO 01.wav" by sandyrb, https://freesound.org/s/86223/ (CC BY 4.0)
-const cheerEl = new Audio('86223__sandyrb__yoo-hoo-01.wav');
+// The chimes, decoded once into the Web Audio engine, as [seconds, sound] from short to long. (Not
+// <audio> elements: unlocking those on iPhone meant playing one muted on every tap, and that let a
+// sound go off at random.) A file that won't load or decode is skipped: the level below it plays.
+let chimes = null, playing = null;
+function loadChimes() {
+  audio ??= new AudioContext();
+  return chimes ??= soundFiles()
+    .then(files => Promise.all(files.map(name => fetch('sounds/' + encodeURIComponent(name))
+      .then(r => r.arrayBuffer()).then(b => audio.decodeAudioData(b))
+      .then(sound => [parseInt(name), sound], err => console.error(name, err)))))
+    .then(list => list.filter(Boolean).sort((p, q) => p[0] - q[0]))
+    .catch(err => { console.error(err); return []; });   // no list (offline?): no chimes, the time is still spoken
+}
 
-// Plays the yoo-hoo, then calls done (also when it can't play: the chime instead, then done)
-function cheer(done = () => {}) {
-  cheerEl.currentTime = 0;
-  cheerEl.onended = done;
-  cheerEl.play().catch(err => { console.error(err); beep([523, 659, 784, 1047]); setTimeout(done, 600); });
+// Plays the chime for a hold of ms, then calls done (straight away if the hold earns none)
+async function chime(ms, done) {
+  const sound = (await loadChimes()).findLast(([seconds]) => ms > seconds * 1000)?.[1];
+  if (!sound) return done();
+  let finished = false;
+  const finish = () => { if (!finished) { finished = true; playing = null; done(); } };
+  playing = audio.createBufferSource();
+  playing.buffer = sound;
+  playing.connect(audio.destination);
+  playing.onended = finish;
+  playing.start();
+  setTimeout(finish, sound.duration * 1000 + 300);   // also when the engine is paused and never says "ended"
 }
 
 // For the debug box: is sound on, is the sound engine running, which voice would speak
@@ -247,10 +264,10 @@ function soundState() {
 // The time spoken in Dutch, a little faster than normal, by one of the device's own voices: a female
 // one if there is one. Voices don't say whether they're female, so these are the female Dutch voices
 // by name (iPhone: Claire, Ellen; Windows: Colette, Fenna; Chrome: Google Nederlands); otherwise any
-// Dutch voice. Without speech support the old beep stands in.
+// Dutch voice.
 const FEMALE_DUTCH = /claire|ellen|colette|fenna|google nederlands/i;
 function speak(text) {
-  if (!('speechSynthesis' in window)) return beep([880]);
+  if (!('speechSynthesis' in window)) return;
   const dutch = speechSynthesis.getVoices().filter(v => v.lang.replace('_', '-').startsWith('nl'));
   const say = new SpeechSynthesisUtterance(text);
   say.lang = 'nl-NL';
@@ -272,7 +289,7 @@ $('mute').onclick = () => {
   $('mute').setAttribute('aria-pressed', String(muted));
   try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch {}
   if (muted) {   // also silence whatever is playing right now
-    cheerEl.pause();
+    try { playing?.stop(); } catch {}
     if ('speechSynthesis' in window) speechSynthesis.cancel();
   } else {
     speak('Geluid aan');   // straight from the tap: also a quick check that speech works on this device
@@ -291,42 +308,65 @@ function unlockAudio() {
     silent.volume = 0;
     speechSynthesis.speak(silent);
   }
-  cheerEl.muted = true;
-  cheerEl.play().then(() => { cheerEl.pause(); cheerEl.muted = false; }).catch(console.error);
 }
 
 // ---- attempts: times are on the performance.now() clock ----
 let lastId = null;   // the attempt logged last, removed again if detection resumes it
 let announcing;      // the pending announcement of the attempt that just ended
+let manualStart = null;   // a tapped attempt in progress (performance.now() at the first tap)
+
+// An attempt has ended, detected or tapped: log it if it lasted 1 s or more, then play its level chime
+// and say the time. wait: hold the announcement back this long (a detected attempt may still resume).
+// Returns the duration.
+function endAttempt(startTs, endTs, method, flagged = false, wait = 0) {
+  const duration_ms = Math.round(endTs - startTs);
+  if (duration_ms < MIN_MS) return duration_ms;
+  const record = best() > 0 && duration_ms > best();
+  const id = Math.random().toString(36).slice(2, 8);
+  lastId = method === 'auto' ? id : null;   // only a detected attempt can be resumed by detection
+  attempts.unshift({
+    id,
+    started_at: localIso(new Date(Date.now() - (performance.now() - startTs))),
+    duration_ms, method, ...(flagged && { flagged }),
+  });
+  save();
+  $('timer').classList.toggle('record', record);
+  announcing = setTimeout(() => muted || chime(duration_ms,
+    () => speak(record ? `Nieuw record! ${spokenTime(duration_ms)}` : spokenTime(duration_ms))), wait);
+  return duration_ms;
+}
 
 const detector = createDetector({
   onStart(ts, resumed) {
+    if (manualStart !== null) return;   // timing by tap: detection doesn't interfere
     if (resumed) clearTimeout(announcing);   // it hadn't really ended: say nothing
     if (resumed && lastId) { attempts = attempts.filter(a => a.id !== lastId); save(); }
     lastId = null;
     $('timer').classList.remove('record');
   },
   onEnd(startTs, endTs, flagged) {
-    const duration_ms = Math.round(endTs - startTs);
-    if (duration_ms >= MIN_MS) {
-      const record = best() > 0 && duration_ms > best();
-      lastId = Math.random().toString(36).slice(2, 8);
-      attempts.unshift({
-        id: lastId,
-        started_at: localIso(new Date(Date.now() - (performance.now() - startTs))),
-        duration_ms, method: 'auto', ...(flagged && { flagged }),
-      });
-      save();
-      $('timer').classList.toggle('record', record);
-      // announced once the attempt can no longer resume (see MERGE_MS), so a short loss of
-      // tracking isn't announced as a landing; a record gets the yoo-hoo first
-      announcing = setTimeout(() => muted ? null : record
-        ? cheer(() => speak(`Nieuw record! ${spokenTime(duration_ms)}`))
-        : speak(spokenTime(duration_ms)), MERGE_MS);
-    }
-    $('timer').textContent = fmt(duration_ms);
+    if (manualStart !== null) return;
+    // announced once the attempt can no longer resume (see MERGE_MS), so a short loss of
+    // tracking isn't announced as a landing
+    $('timer').textContent = fmt(endAttempt(startTs, endTs, 'auto', flagged, MERGE_MS));
   },
 });
+
+// Tapping the timer starts it, tapping again stops it: manual timing, for testing the sounds and for
+// when detection misses a handstand. Detection is ignored meanwhile, and tapping does nothing while a
+// detected attempt runs. Afterwards the timer is back at 0.00.
+$('timer').onclick = () => {
+  unlockAudio();   // a tap: the moment iOS allows sound
+  if (detector.state.startTs !== null) return;
+  if (manualStart === null) {
+    manualStart = performance.now();
+    $('timer').classList.remove('record');
+    return;
+  }
+  endAttempt(manualStart, performance.now(), 'manual');
+  manualStart = null;
+  $('timer').textContent = '0.00';
+};
 
 
 // ---- record screen: camera, pose model, overlay ----
@@ -441,7 +481,7 @@ function debug(now, lm, poses) {
 
 function tick() {
   if (!live) return;
-  const { startTs } = detector.state;
+  const startTs = manualStart ?? detector.state.startTs;
   if (startTs !== null) $('timer').textContent = fmt(performance.now() - startTs);
   requestAnimationFrame(tick);
 }
@@ -536,6 +576,7 @@ $('zoom').onclick = e => {
 // ---- session: from entering the record screen until leaving it ----
 async function startSession() {
   live = true;
+  manualStart = null;
   detector.reset();
   shown = null;
   $('timer').textContent = '0.00';
@@ -548,6 +589,7 @@ async function startSession() {
     useStream(s);
     await $('video').play();
     await findCameras().catch(console.error);
+    loadChimes();   // in the background, ready by the first landing
     // the ultra wide lens can only be found once a camera is open: switch to it now if it was chosen
     if (wantsUltraWide() && stream.getVideoTracks()[0].getSettings().deviceId !== ultraWide) await reopenCamera();
     if (!live) return;
@@ -562,6 +604,7 @@ async function startSession() {
 
 function endSession() {
   live = false;
+  manualStart = null;
   $('video').cancelVideoFrameCallback(frameReq);   // or the pending request runs as a second loop next session
   detector.reset();
   lastId = null;

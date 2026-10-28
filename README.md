@@ -38,3 +38,23 @@ python tools/replay.py video
 ```
 
 Lists the attempts found per video. Videos stay out of git (`.gitignore`); the repo is public.
+
+## Sounds
+
+Each file in `sounds/` whose name starts with a number of seconds (`04s-level-up.wav`) is the chime for a
+hold longer than that; the longest level reached plays when the timer stops, before the time is spoken.
+Add, remove or rename a file and the app picks it up: locally straight away, on the live site once pushed.
+Formats: wav, mp3, m4a, ogg.
+
+Sources:
+
+- From [Freesound](https://freesound.org), CC BY 4.0 (credit required):
+  [Unpause rpg](https://freesound.org/s/873112/), [Level up (PSX)](https://freesound.org/s/873095/) and
+  [Level up (Sci-Fi)](https://freesound.org/s/872713/) by heyheytheree;
+  [evolve.wav](https://freesound.org/s/391656/) by jeckkech;
+  [Jingle_Win_00.wav](https://freesound.org/s/270333/) by LittleRobotSoundFactory
+- From Freesound, CC0: [Level Up](https://freesound.org/s/442943/) by qubodup;
+  [8bit Powerup](https://freesound.org/s/464908/) by plasterbrain
+- Generated with ElevenLabs: the two `ElevenLabs_…` files
+
+Icons: [Lucide](https://lucide.dev) (ISC licence).
