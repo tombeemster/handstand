@@ -27,51 +27,52 @@ function recordIds() {
 // The average of every attempt ever: shown in the average tile and as the chart's dashed line
 const overallAverage = () => attempts.length ? attempts.reduce((s, a) => s + a.duration_ms, 0) / attempts.length : null;
 
+// Saving redraws only the screen on view; the others are drawn when you go to them (see route).
+// Redrawing every screen on every landing cost a stutter while the camera ran, more as the log grows.
 function save() {
   localStorage.setItem(KEY, JSON.stringify(attempts));
-  renderHome();
-  renderLog();
-  if (!$('day').hidden) renderDay(shownDay);
+  render();
 }
 
 // When an attempt started, day first: 18/10/2026 – 07:16:09
 const stamp = a => `${a.started_at.slice(8, 10)}/${a.started_at.slice(5, 7)}/${a.started_at.slice(0, 4)} – ${a.started_at.slice(11)}`;
 
-// A day as its card title: "Friday 23 October", in the browser's language
+// A day as its tile title: "Friday 23 October", in the browser's language
 const dayLabel = day => new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
-// One attempt as a list row: its date and time, its duration; cls: 'best' (a record), 'top' or ''
-const row = (a, cls) => `<li class="${cls}" data-id="${a.id}">
-  <time>${stamp(a)}</time><strong>${fmt(a.duration_ms)}s</strong>
+// One attempt as a list row: its date and time, its duration; cls: 'best' (a record), 'top' or ''.
+// The current record (the last of records) gets the record dot, as on home and in the chart.
+const row = (a, cls, records) => `<li class="${cls}" data-id="${a.id}">
+  <time>${stamp(a)}</time><strong>${a.id === [...records].at(-1) ? '<span class="record-dot series-record"></span>' : ''}${fmt(a.duration_ms)}s</strong>
 </li>`;
 
-// The log: one card per day, newest day first, each with that day's 3 longest attempts and an arrow to
+// The log: one tile per day, newest day first, each with that day's 3 longest attempts and an arrow to
 // the day's own page with all of them. Attempts that set a record at the time are marked "best".
+// (A grid of small day tiles, two per row with month headings, was tried and dropped: less readable.)
 const LOG_TOP = 3;
 const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';   // Lucide arrow-right
-function dayCards(list) {
+const longestFirst = items => [...items].sort((p, q) => q.duration_ms - p.duration_ms);
+
+function renderLog() {
   const records = recordIds(), byDay = new Map();
-  for (const a of list) {
+  for (const a of attempts) {
     const day = a.started_at.slice(0, 10);
     byDay.set(day, [...(byDay.get(day) ?? []), a]);
   }
-  return [...byDay].map(([day, items]) => `
+  $('days').innerHTML = [...byDay].sort(([p], [q]) => q.localeCompare(p)).map(([day, items]) => `
     <div class="day">
-      <div class="day-label card-header">${dayLabel(day)}<a href="#log/${day}" aria-label="All attempts of ${dayLabel(day)}">${ARROW}</a></div>
-      <ul>${[...items].sort((p, q) => q.duration_ms - p.duration_ms).slice(0, LOG_TOP).map(a => row(a, records.has(a.id) ? 'best' : '')).join('')}</ul>
-    </div>`).join('');
+      <div class="day-label tile-header">${dayLabel(day)}<a href="#log/${day}" aria-label="All attempts of ${dayLabel(day)}">${ARROW}</a></div>
+      <ul>${longestFirst(items).slice(0, LOG_TOP).map(a => row(a, records.has(a.id) ? 'best' : '', records)).join('')}</ul>
+    </div>`).join('') || '<p>No attempts yet.</p>';
 }
 
-// A day's own page: all its attempts in time order. Records at their time are marked "best" (gold);
-// the day's longest, if it isn't one of those, "top" (outlined).
-let shownDay = null;
+// A day's own page: all its attempts, longest first. Records at their time are marked "best" (gold);
+// the day's longest (the first), if it isn't one of those, "top" (outlined).
 function renderDay(day) {
-  shownDay = day;
   const records = recordIds();
-  const items = attempts.filter(a => a.started_at.startsWith(day)).sort((p, q) => p.started_at.localeCompare(q.started_at));
-  const top = items.reduce((b, a) => !b || a.duration_ms > b.duration_ms ? a : b, null);
+  const items = longestFirst(attempts.filter(a => a.started_at.startsWith(day)));
   $('day-title').textContent = dayLabel(day);
-  $('day-list').innerHTML = items.map(a => row(a, records.has(a.id) ? 'best' : a === top ? 'top' : '')).join('')
+  $('day-list').innerHTML = items.map((a, i) => row(a, records.has(a.id) ? 'best' : i === 0 ? 'top' : '', records)).join('')
     || '<li>No attempts on this day.</li>';
 }
 
@@ -88,12 +89,21 @@ function onAttemptTap(e) {
 // ---- screens: #home (or none), #record, #log, one tab each. The camera is on only on #record. ----
 // #log/2026-10-23 is one day's page: part of the log, so the log tab stays highlighted there
 const SCREENS = ['home', 'record', 'log', 'day'];
+let screen = 'home', day = null;   // on view now
+
+// Draws the screen on view (the record screen draws itself, frame by frame)
+function render() {
+  if (screen === 'home') renderHome();
+  if (screen === 'log') renderLog();
+  if (screen === 'day') renderDay(day);
+}
 
 function route() {
-  const [name, day] = location.hash.slice(1).split('/');
-  const screen = name === 'log' && day ? 'day' : SCREENS.includes(name) ? name : 'home';
+  const [name, date] = location.hash.slice(1).split('/');
+  screen = name === 'log' && date ? 'day' : SCREENS.includes(name) ? name : 'home';
+  day = date ?? null;
   for (const s of SCREENS) $(s).hidden = s !== screen;
-  if (screen === 'day') renderDay(day);
+  render();
   const tab = screen === 'day' ? 'log' : screen;
   for (const a of $('tabs').querySelectorAll('a')) {
     if (a.hash === '#' + tab) a.setAttribute('aria-current', 'page');
@@ -194,10 +204,7 @@ function renderChart(week) {
 // A tap on a tab is the moment iOS allows sound to be switched on for later
 $('tabs').onclick = unlockAudio;
 
-// ---- log: all attempts, grouped per day ----
-function renderLog() {
-  $('days').innerHTML = dayCards(attempts) || '<p>No attempts yet.</p>';
-}
+// ---- log: all attempts, grouped per day (renderLog, above) ----
 
 $('days').onclick = $('day-list').onclick = onAttemptTap;
 
@@ -213,35 +220,42 @@ $('export').onclick = () => {
 let audio;   // the Web Audio engine, started by the first tap (unlockAudio)
 
 // Level-up chimes: every file in sounds/ whose name starts with a number of seconds ("04s-…") is the
-// chime for a hold longer than that; the longest level reached plays when the timer stops. Adding,
-// removing or renaming a file is all it takes. Credits in README.md.
+// chime for a hold longer than that; the longest level reached plays when the timer stops. Several files
+// with the same number are variants of one level: a random one plays, never the same one twice in a row.
+// Adding, removing or renaming a file is all it takes. Credits in README.md.
 // A page can't list a folder itself, so the server does: GitHub's file list for the repo on the live
-// site, the folder listing of `npx serve` locally. Both answer in JSON, as [{ name }] or { files: [{ base }] }.
+// site, the folder listing of `npx serve` locally. Both answer in JSON, as [{ name }] or { files: [{ base }] } (where name lacks the extension).
 async function soundFiles() {
   const [owner] = location.hostname.split('.'), [, repo] = location.pathname.split('/');
   const url = location.hostname.endsWith('.github.io') ? `https://api.github.com/repos/${owner}/${repo}/contents/sounds` : 'sounds/';
   const list = await (await fetch(url, { headers: { Accept: 'application/json' } })).json();
-  return (list.files ?? list).map(f => f.name ?? f.base).filter(name => /^\d+s.*\.(wav|mp3|m4a|ogg)$/i.test(name));
+  return (list.files ?? list).map(f => f.base ?? f.name).filter(name => /^\d+s.*\.(wav|mp3|m4a)$/i.test(name));
 }
 
-// The chimes, decoded once into the Web Audio engine, as [seconds, sound] from short to long. (Not
+// The chimes, decoded once into the Web Audio engine, as [seconds, sounds] from short to long. (Not
 // <audio> elements: unlocking those on iPhone meant playing one muted on every tap, and that let a
-// sound go off at random.) A file that won't load or decode is skipped: the level below it plays.
-let chimes = null, playing = null;
+// sound go off at random.) A file that won't load or decode is skipped; a level without any plays the one below.
+let chimes = null, playing = null, lastChime = null;
 function loadChimes() {
   audio ??= new AudioContext();
   return chimes ??= soundFiles()
     .then(files => Promise.all(files.map(name => fetch('sounds/' + encodeURIComponent(name))
       .then(r => r.arrayBuffer()).then(b => audio.decodeAudioData(b))
       .then(sound => [parseInt(name), sound], err => console.error(name, err)))))
-    .then(list => list.filter(Boolean).sort((p, q) => p[0] - q[0]))
+    .then(list => {
+      const levels = new Map();
+      for (const [seconds, sound] of list.filter(Boolean)) levels.set(seconds, [...(levels.get(seconds) ?? []), sound]);
+      return [...levels].sort((p, q) => p[0] - q[0]);
+    })
     .catch(err => { console.error(err); return []; });   // no list (offline?): no chimes, the time is still spoken
 }
 
 // Plays the chime for a hold of ms, then calls done (straight away if the hold earns none)
 async function chime(ms, done) {
-  const sound = (await loadChimes()).findLast(([seconds]) => ms > seconds * 1000)?.[1];
-  if (!sound) return done();
+  const sounds = (await loadChimes()).findLast(([seconds]) => ms > seconds * 1000)?.[1];
+  if (!sounds) return done();
+  const fresh = sounds.length > 1 ? sounds.filter(s => s !== lastChime) : sounds;
+  const sound = lastChime = fresh[Math.floor(Math.random() * fresh.length)];
   let finished = false;
   const finish = () => { if (!finished) { finished = true; playing = null; done(); } };
   playing = audio.createBufferSource();
@@ -256,9 +270,7 @@ async function chime(ms, done) {
 function soundState() {
   if (muted) return 'sound off';
   if (!('speechSynthesis' in window)) return `no speech · audio ${audio?.state ?? 'not started'}`;
-  const voices = speechSynthesis.getVoices(), dutch = voices.filter(v => v.lang.replace('_', '-').startsWith('nl'));
-  const voice = dutch.find(v => FEMALE_DUTCH.test(v.name)) ?? dutch[0];
-  return `audio ${audio?.state ?? 'not started'} · ${voices.length} voices · ${voice ? voice.name : 'no Dutch voice'}`;
+  return `audio ${audio?.state ?? 'not started'} · ${dutchVoice()?.name ?? 'no Dutch voice'}`;
 }
 
 // The time spoken in Dutch, a little faster than normal, by one of the device's own voices: a female
@@ -266,12 +278,20 @@ function soundState() {
 // by name (iPhone: Claire, Ellen; Windows: Colette, Fenna; Chrome: Google Nederlands); otherwise any
 // Dutch voice.
 const FEMALE_DUTCH = /claire|ellen|colette|fenna|google nederlands/i;
+// Found once: the voice list is long, and some browsers fill it in only after a while (until then: none)
+let voice = null;
+function dutchVoice() {
+  if (!voice) {
+    const dutch = speechSynthesis.getVoices().filter(v => v.lang.replace('_', '-').startsWith('nl'));
+    voice = dutch.find(v => FEMALE_DUTCH.test(v.name)) ?? dutch[0] ?? null;
+  }
+  return voice;
+}
 function speak(text) {
   if (!('speechSynthesis' in window)) return;
-  const dutch = speechSynthesis.getVoices().filter(v => v.lang.replace('_', '-').startsWith('nl'));
   const say = new SpeechSynthesisUtterance(text);
   say.lang = 'nl-NL';
-  say.voice = dutch.find(v => FEMALE_DUTCH.test(v.name)) ?? dutch[0] ?? null;
+  say.voice = dutchVoice();
   say.rate = 1.2;
   speechSynthesis.speak(say);
 }
@@ -336,6 +356,14 @@ function endAttempt(startTs, endTs, method, flagged = false, wait = 0) {
   return duration_ms;
 }
 
+// Near misses this session, newest first: she was upside down but no attempt was timed, and why.
+// Shown in the debug box. (Attempts under 1 s are noted here too.)
+const misses = [];
+function noteMiss(ts, why) {
+  misses.unshift({ at: new Date(Date.now() - (performance.now() - ts)).toTimeString().slice(0, 8), why });
+  console.info('near miss', misses[0]);
+}
+
 const detector = createDetector({
   onStart(ts, resumed) {
     if (manualStart !== null) return;   // timing by tap: detection doesn't interfere
@@ -348,7 +376,12 @@ const detector = createDetector({
     if (manualStart !== null) return;
     // announced once the attempt can no longer resume (see MERGE_MS), so a short loss of
     // tracking isn't announced as a landing
-    $('timer').textContent = fmt(endAttempt(startTs, endTs, 'auto', flagged, MERGE_MS));
+    const ms = endAttempt(startTs, endTs, 'auto', flagged, MERGE_MS);
+    if (ms < MIN_MS) noteMiss(startTs, `timed ${fmt(ms)} s, under 1 s`);
+    $('timer').textContent = fmt(ms);
+  },
+  onMiss(ts, why) {
+    if (manualStart === null) noteMiss(ts, why);
   },
 });
 
@@ -379,11 +412,33 @@ async function loadModel() {
   return PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate: 'GPU' }, runningMode: 'VIDEO', numPoses: NUM_POSES });
 }
 
-// The pose model is loaded once and shared by every visit to this screen. Leaving while it still
-// loads and coming back used to start a second load next to the first, which can hang.
-let modelLoading = null;
-function getModel() {
-  return modelLoading ??= loadModel().catch(err => { modelLoading = null; throw err; });
+// Each model ('main', and 'flip' for the second opinion) is loaded once and shared by every visit to
+// this screen. Leaving while one still loaded and coming back used to start a second load, which can hang.
+const loading = {};
+function getModel(name = 'main') {
+  return loading[name] ??= loadModel().catch(err => { delete loading[name]; throw err; });
+}
+
+// The upside-down second opinion (see frame() in detect.js): the same model on the camera frame turned
+// 180°, run only on the frames where it can matter. Its own copy of the model, since each one follows
+// what it saw in earlier frames. Optional: if it fails to load or errors, the app carries on without it.
+let flipModel = null;
+const flipCanvas = document.createElement('canvas');
+// Asked for by the detector only when the normal reading has her standing with her arms up
+function flippedPoses(v, now) {
+  if (!flipModel) return [];
+  try {
+    if (flipCanvas.width !== v.videoWidth) { flipCanvas.width = v.videoWidth; flipCanvas.height = v.videoHeight; }
+    const g = flipCanvas.getContext('2d');
+    g.setTransform(-1, 0, 0, -1, flipCanvas.width, flipCanvas.height);   // turned 180°
+    g.drawImage(v, 0, 0);
+    // turned back: the same picture positions as the normal reading
+    return flipModel.detectForVideo(flipCanvas, now).landmarks.map(pose => pose.map(p => ({ ...p, x: 1 - p.x, y: 1 - p.y })));
+  } catch (err) {
+    console.error(err);
+    flipModel = null;   // without the second opinion from here on
+    return [];
+  }
 }
 
 // The model failed on a frame: show why (also on the phone, in the debug box), then start a fresh
@@ -394,7 +449,8 @@ function restartModel(err) {
 ${err?.message ?? err}`;
   $('status').textContent = 'Restarting pose model…';
   try { landmarker.close(); } catch {}
-  landmarker = modelLoading = null;
+  landmarker = null;
+  delete loading.main;
   getModel()
     .then(model => { landmarker = model; if (live) frameReq = $('video').requestVideoFrameCallback(onFrame); })
     .catch(e => { console.error(e); $('status').textContent = 'No pose model – reload the page'; });
@@ -410,7 +466,7 @@ function onFrame(now) {
   let poses;
   try { poses = landmarker.detectForVideo(v, now).landmarks; }
   catch (err) { return restartModel(err); }
-  const lm = detector.frame(now, poses, v.videoWidth, v.videoHeight);
+  const lm = detector.frame(now, poses, v.videoWidth, v.videoHeight, () => flippedPoses(v, now));
   draw(lm, poses, now);
   debug(now, lm, poses);
   frameReq = v.requestVideoFrameCallback(onFrame);
@@ -458,16 +514,21 @@ function draw(lm, poses, ts) {
   };
   for (const p of poses) if (p !== lm) skeleton(p, '#8b90a380');   // ignored: phantoms, bystanders
   const hint = lm && s.startTs === null ? framingHint(lm) : null;
-  $('status').textContent = s.startTs !== null ? 'Up!' : !lm ? 'No one in view' : hint ?? 'Ready – kick up, side-on works best';
+  const status = s.startTs !== null ? 'Up!' : !lm ? 'No one in view' : hint ?? 'Ready – kick up, side-on works best';
+  if ($('status').textContent !== status) $('status').textContent = status;   // only when it changes
   const calm = smoothPose(lm, ts);
   if (calm) skeleton(calm, hint ? '#ffb347' : '#3ddc84');   // amber: part of her is out of frame
 }
 
-// Debug readout: landmark numbers are visibility in %, left then right; detection needs > 50 (ankles > 30)
-let fps = 0, prevNow = 0;
+// Debug readout: landmark numbers are visibility in %, left then right; detection needs > 50 (ankles > 30).
+// Written four times a second: every frame was work for nothing, and frames are what detection needs.
+// The last lines are the session's latest near misses (see noteMiss), newest first.
+let fps = 0, prevNow = 0, debugAt = 0;
 function debug(now, lm, poses) {
   fps = fps * 0.9 + (1000 / (now - prevNow)) * 0.1;
   prevNow = now;
+  if (now - debugAt < 250) return;
+  debugAt = now;
   const s = detector.state;
   const v = (...ids) => ids.map(i => lm ? Math.round(lm[i].visibility * 100) : '--').join(' ');
   $('debug').textContent = [
@@ -476,6 +537,7 @@ function debug(now, lm, poses) {
     `${s.startTs === null ? 'idle' : 'up'}  inv ${s.invRun}/${s.confirm}  down ${s.downRun}/${s.confirm}`,
     `nose  ${v(0)}`, `wrist ${v(15, 16)}`, `hip   ${v(23, 24)}`, `ankle ${v(27, 28)}`,
     soundState(),
+    ...misses.slice(0, 3).map(m => `missed ${m.at}: ${m.why}`),
   ].join('\n');
 }
 
@@ -595,6 +657,7 @@ async function startSession() {
     if (!live) return;
     $('status').textContent = 'Loading pose model…';
     landmarker = await getModel();
+    getModel('flip').then(m => { flipModel = m; }).catch(console.error);   // the second opinion, when ready
     if (live) frameReq = $('video').requestVideoFrameCallback(onFrame);
   } catch (err) {
     console.error(err);
@@ -613,6 +676,4 @@ function endSession() {
   wake?.release();
 }
 
-renderHome();
-renderLog();
 route();

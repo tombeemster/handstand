@@ -1,11 +1,11 @@
-/* Handstand styles. Structure only for now; the visual design comes later.
+/* Handstand styles. What the colours and rules mean: design.md.
 
    1. Tokens
    2. Base
    3. Shared: buttons, attempt rows, scrolling pages
    4. Tab bar
    5. Home screen
-   6. Day cards and log screen
+   6. Day tiles and log screen
    7. Record screen
    8. A day's page
 */
@@ -16,17 +16,16 @@
 :root {
   /* colours */
   --bg: #11131a;
-  --card: #181a24;
+  --tile: #181a24;
   --text: #f2f3f7;
   --dim: #8b90a3;
-  --go: #3ddc84;
-  --on-go: #06240f;
   --wait: #ffb347;
   --gold: #ffe388;
   --scrim: #000a;          /* dark see-through backing for text on the camera view */
   --scrim-strong: #000c;
 
   /* spacing */
+  --gap-xs: 4px;
   --gap-s: 8px;
   --gap-m: 16px;
   --gap-l: 24px;
@@ -80,7 +79,7 @@ h1 {
   margin: 0;
   padding: var(--gap-m) 0;
   font-size: 1rem;
-  font-weight: 700;
+  font-weight: 500;
   text-transform: uppercase;
   text-align: center;
   letter-spacing: 0.2em;
@@ -90,7 +89,7 @@ ul {
   margin: 0;
   padding: 0;
   list-style: none;
-  background: var(--card);
+  background: var(--tile);
   border-radius: var(--radius-s);
   box-shadow: var(--tile-shadow);
 }
@@ -111,15 +110,10 @@ button {
   padding: var(--gap-m);
   border: 0;
   border-radius: var(--radius-s);
-  background: var(--card);
+  background: var(--tile);
   color: var(--text);
   font: inherit;
   font-weight: 600;
-}
-
-button.primary {
-  background: var(--go);
-  color: var(--on-go);
 }
 
 /* An attempt: time of day on the left, duration on the right */
@@ -214,7 +208,7 @@ li strong {
 
 #chart {
   margin: 0;
-  background: var(--card);
+  background: var(--tile);
   border-radius: var(--radius-m);
   padding: var(--gap-m);
   margin: var(--gap-s) 0;
@@ -283,18 +277,19 @@ li strong {
 .tile {
   padding: var(--gap-l);
   border-radius: var(--radius-m);
-  background: var(--card);
+  background: var(--tile);
   box-shadow: var(--tile-shadow);
   color: var(--dim);
   text-align: center;
 }
 
-/* the record day's dot in the Daily high list: the same dot as in the chart */
+/* the current record's dot in the lists (Daily highs, log, day page): the same dot as in the chart */
 .record-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
   margin-right: var(--gap-s);
+  margin-top: -3px;
   border-radius: 50%;
   vertical-align: middle;
   background: var(--series);
@@ -309,13 +304,17 @@ li strong {
 }
 
 
-/* 6. Day cards (home and log) and the log screen --------------------------- */
+/* 6. Day tiles (home and log) and the log screen --------------------------- */
 
-/* One card per day, styled like the home tiles: the date on top, then that day's attempts */
+/* One tile per day, styled like the home tiles: the date on top, then that day's attempts.
+   Tiles off-screen aren't laid out or painted until they scroll near (content-visibility), so a long
+   log stays quick; contain-intrinsic-size keeps the scrollbar honest meanwhile (about a 3-row tile). */
 .day {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
   margin-bottom: var(--gap-s);
   border-radius: var(--radius-m);
-  background: var(--card);
+  background: var(--tile);
   box-shadow: var(--tile-shadow);
 }
 
@@ -326,21 +325,21 @@ li strong {
   text-align: center;
 }
 
-/* a card title on the left with a link on the right: the log's day cards */
-.card-header {
+/* a tile title on the left with a link on the right: the log's day tiles */
+.tile-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   text-align: left;
 }
 
-.card-header a {
+.tile-header a {
   display: flex;
   align-items: center;
   gap: 4px;
 }
 
-/* the home screen's "All attempts" link: the last row of the Daily highs card, centred */
+/* the home screen's "All attempts" link: the last row of the Daily highs tile, centred */
 .day-footer {
   display: flex;
   align-items: center;
@@ -350,7 +349,7 @@ li strong {
 }
 
 /* the arrows: drawn like the other icons, sized to the text they follow */
-.card-header svg,
+.tile-header svg,
 .day-footer svg,
 .back svg {
   width: 1em;
@@ -362,7 +361,7 @@ li strong {
   stroke-linejoin: round;
 }
 
-/* the list is part of the day card, not a card of its own */
+/* the list is part of the day tile, not a tile of its own */
 .day ul {
   background: none;
   box-shadow: none;
@@ -545,6 +544,6 @@ li strong {
   top: calc(var(--safe-top) + var(--gap-m));
   left: var(--gap-m);
   display: flex;
-  font-size: 24px;          /* the arrow is 1em, like the card arrows: 24 px here, like the other icons */
+  font-size: 24px;          /* the arrow is 1em, like the tile arrows: 24 px here, like the other icons */
   color: var(--dim);
 }
