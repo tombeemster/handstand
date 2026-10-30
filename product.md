@@ -22,7 +22,7 @@ These decide every feature.
 
 ## Scope
 
-**In:** automatic timing; manual timing by tapping the timer (a fallback, and for testing sounds); a log with delete and CSV export; record and average tiles; a 7-day chart of daily highs; level chimes plus the spoken time; front/back camera, 0.5×/1× lens, mute.
+**In:** automatic timing; manual timing by tapping the timer (a fallback, and for testing sounds); a log with delete and CSV export; record and average tiles; a 7-day chart of daily highs; level chimes plus the spoken time; a warning when the frame rate is too low to time reliably; front/back camera, 0.5×/1× lens, mute.
 
 **Out, for now:** multiple athletes, accounts or sync, form scoring, storing video, the App Store (no Mac available), offline caching.
 

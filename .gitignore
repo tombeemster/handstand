@@ -1,7 +1,3 @@
 tools/.cache/
-# test recordings stay private (the repo is public)
-*.mov
-*.mp4
-*.m4v
-# phone exports with the real log: private too
 data/
+video/

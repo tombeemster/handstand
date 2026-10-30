@@ -11,6 +11,7 @@ Dark, calm and restrained: a few tiles on a near-black page, no decoration. The 
 - **Gold is for records only:** the record tile, the record line and dot in the chart, record rows in the lists, the timer right after a new record. Nothing else is gold, so gold always means "record".
 - **White:** values (the daily high, the average) and the active tab.
 - **Dim grey:** labels, inactive tabs, axis text.
+- **Amber (`--wait`) is for "not ready":** the skeleton when part of her is out of frame, the alert icon when the frame rate is too low.
 - **Skeleton on the camera:** green when she's framed and ready, amber when part of her is out of frame, faint grey for poses the app ignores.
 - A value and its chart line share one colour through a `series-*` class (`series-record`, `series-best`, `series-avg`), so a tile and its line can't drift apart.
 

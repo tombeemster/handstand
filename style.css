@@ -20,6 +20,7 @@
   --text: #f2f3f7;
   --dim: #8b90a3;
   --wait: #ffb347;
+  --ready: #3ddc84;        /* her skeleton when she's framed and ready */
   --gold: #ffe388;
   --scrim: #000a;          /* dark see-through backing for text on the camera view */
   --scrim-strong: #000c;
@@ -47,6 +48,7 @@
   --tabbar-width: calc(3 * var(--tab) + 2 * var(--gap-m));
   --tabbar-total: calc(var(--tabbar) + var(--gap-s) + var(--safe-bottom));
 
+  --tile-radius: var(--radius-l);
   --tile-edge: rgba(0, 0, 0, 0.1);
   --tile-edge-light: rgba(196, 196, 196, 0.1);
   --tile-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px var(--tile-edge), inset 0 -1px 0 0 var(--tile-edge), inset 0 0 0 1px var(--tile-edge-light);
@@ -60,14 +62,15 @@
 }
 
 body {
-  margin: 0;
+  margin: 0 auto;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Vend Sans', system-ui, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   font-size: 1rem;
   font-weight: 400;
   -webkit-user-select: none;
   user-select: none;
+  max-width: 480px;
 }
 
 a {
@@ -109,7 +112,7 @@ ul {
 button {
   padding: var(--gap-m);
   border: 0;
-  border-radius: var(--radius-s);
+  border-radius: var(--tile-radius);
   background: var(--tile);
   color: var(--text);
   font: inherit;
@@ -209,7 +212,7 @@ li strong {
 #chart {
   margin: 0;
   background: var(--tile);
-  border-radius: var(--radius-m);
+  border-radius: var(--tile-radius);
   padding: var(--gap-m);
   margin: var(--gap-s) 0;
   box-shadow: var(--tile-shadow);
@@ -276,7 +279,7 @@ li strong {
 
 .tile {
   padding: var(--gap-l);
-  border-radius: var(--radius-m);
+  border-radius: var(--tile-radius);
   background: var(--tile);
   box-shadow: var(--tile-shadow);
   color: var(--dim);
@@ -313,7 +316,7 @@ li strong {
   content-visibility: auto;
   contain-intrinsic-size: auto 240px;
   margin-bottom: var(--gap-s);
-  border-radius: var(--radius-m);
+  border-radius: var(--tile-radius);
   background: var(--tile);
   box-shadow: var(--tile-shadow);
 }
@@ -416,13 +419,31 @@ li strong {
 }
 
 #status {
-  left: var(--gap-s);
+  left: 50%;
+  transform: translateX(-50%);   /* centred, at most the screen's width less a margin */
+  width: max-content;
+  max-width: calc(100% - 2 * var(--gap-m));
+  text-align: center;
   padding: 4px 10px;
   border-radius: 99px;
   font-size: 14px;
 }
 
+/* in front of the low frame rate warning */
+#status .alert {
+  width: 1em;
+  height: 1em;
+  margin-right: 6px;
+  vertical-align: -0.125em;
+  fill: none;
+  stroke: var(--wait);   /* amber, like the skeleton when part of her is out of frame */
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 #debug {
+  top: calc(104px + var(--safe-top));   /* below the status line */
   right: var(--gap-s);
   margin: 0;
   padding: 4px var(--gap-s);
@@ -520,7 +541,8 @@ li strong {
   display: none;
 }
 
-.beside-tabs svg {
+.beside-tabs svg,
+#debug-toggle svg {
   display: block;
   width: 24px;
   height: 24px;
@@ -536,6 +558,21 @@ li strong {
 
 #day {
   position: relative;
+}
+
+/* debug box on/off: top right, level with the heading; bright while the box is shown */
+#debug-toggle {
+  position: absolute;
+  top: calc(var(--safe-top) + var(--gap-m));
+  right: var(--gap-m);
+  display: flex;
+  padding: 0;
+  background: none;
+  color: var(--dim);
+}
+
+#debug-toggle[aria-pressed="true"] {
+  color: var(--text);
 }
 
 /* back to the log: top left, level with the heading */

@@ -2,27 +2,30 @@ import { createDetector, framingHint, VIS, ANKLE_VIS, MIN_MS, MERGE_MS } from '.
 
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
-// NUM_POSES 2 was tried: the model then reports one body twice (upright and flipped), worse.
-const NUM_POSES = 1;
 const BONES = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
 const KEY = 'handstand.attempts', CAMERA_KEY = 'handstand.camera';
 
 const $ = id => document.getElementById(id);
+// The log and settings, kept on this device as JSON. Never throws: in a private window, or with a
+// corrupt value, recall gives the fallback and remember does nothing.
+const recall = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
+const remember = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };
 const fmt = ms => (ms / 1000).toFixed(2);
 // Local time as ISO 8601 without a zone, e.g. 2026-10-11T18:04:12
 const localIso = d => new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
 
 // ---- log (newest first) ----
-let attempts = JSON.parse(localStorage.getItem(KEY) || '[]');
+let attempts = recall(KEY, []);
 const best = () => Math.max(0, ...attempts.map(a => a.duration_ms));
-// The attempts that set a new all-time record when they happened, oldest first
-function recordIds() {
+// The attempts that set a new all-time record when they happened (ids), and the one that holds it now
+// (current: the last of them, so the first of two equal holds), or null before any attempt
+function records() {
   const ids = new Set();
-  let record = 0;
+  let current = null;
   for (const a of [...attempts].sort((p, q) => p.started_at.localeCompare(q.started_at))) {
-    if (a.duration_ms > record) { record = a.duration_ms; ids.add(a.id); }
+    if (a.duration_ms > (current?.duration_ms ?? 0)) { current = a; ids.add(a.id); }
   }
-  return ids;
+  return { ids, current };
 }
 // The average of every attempt ever: shown in the average tile and as the chart's dashed line
 const overallAverage = () => attempts.length ? attempts.reduce((s, a) => s + a.duration_ms, 0) / attempts.length : null;
@@ -30,7 +33,7 @@ const overallAverage = () => attempts.length ? attempts.reduce((s, a) => s + a.d
 // Saving redraws only the screen on view; the others are drawn when you go to them (see route).
 // Redrawing every screen on every landing cost a stutter while the camera ran, more as the log grows.
 function save() {
-  localStorage.setItem(KEY, JSON.stringify(attempts));
+  remember(KEY, attempts);
   render();
 }
 
@@ -40,10 +43,13 @@ const stamp = a => `${a.started_at.slice(8, 10)}/${a.started_at.slice(5, 7)}/${a
 // A day as its tile title: "Friday 23 October", in the browser's language
 const dayLabel = day => new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
+// The current record's mark in every list, the same dot as in the chart
+const DOT = '<span class="record-dot series-record"></span>';
+
 // One attempt as a list row: its date and time, its duration; cls: 'best' (a record), 'top' or ''.
-// The current record (the last of records) gets the record dot, as on home and in the chart.
-const row = (a, cls, records) => `<li class="${cls}" data-id="${a.id}">
-  <time>${stamp(a)}</time><strong>${a.id === [...records].at(-1) ? '<span class="record-dot series-record"></span>' : ''}${fmt(a.duration_ms)}s</strong>
+// rec: records(), for the dot on the current record.
+const row = (a, cls, rec) => `<li class="${cls}" data-id="${a.id}">
+  <time>${stamp(a)}</time><strong>${a === rec.current ? DOT : ''}${fmt(a.duration_ms)}s</strong>
 </li>`;
 
 // The log: one tile per day, newest day first, each with that day's 3 longest attempts and an arrow to
@@ -54,25 +60,26 @@ const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><
 const longestFirst = items => [...items].sort((p, q) => q.duration_ms - p.duration_ms);
 
 function renderLog() {
-  const records = recordIds(), byDay = new Map();
+  const rec = records(), byDay = new Map();
   for (const a of attempts) {
     const day = a.started_at.slice(0, 10);
-    byDay.set(day, [...(byDay.get(day) ?? []), a]);
+    if (!byDay.has(day)) byDay.set(day, []);
+    byDay.get(day).push(a);
   }
   $('days').innerHTML = [...byDay].sort(([p], [q]) => q.localeCompare(p)).map(([day, items]) => `
     <div class="day">
       <div class="day-label tile-header">${dayLabel(day)}<a href="#log/${day}" aria-label="All attempts of ${dayLabel(day)}">${ARROW}</a></div>
-      <ul>${longestFirst(items).slice(0, LOG_TOP).map(a => row(a, records.has(a.id) ? 'best' : '', records)).join('')}</ul>
+      <ul>${longestFirst(items).slice(0, LOG_TOP).map(a => row(a, rec.ids.has(a.id) ? 'best' : '', rec)).join('')}</ul>
     </div>`).join('') || '<p>No attempts yet.</p>';
 }
 
 // A day's own page: all its attempts, longest first. Records at their time are marked "best" (gold);
 // the day's longest (the first), if it isn't one of those, "top" (outlined).
 function renderDay(day) {
-  const records = recordIds();
+  const rec = records();
   const items = longestFirst(attempts.filter(a => a.started_at.startsWith(day)));
   $('day-title').textContent = dayLabel(day);
-  $('day-list').innerHTML = items.map((a, i) => row(a, records.has(a.id) ? 'best' : i === 0 ? 'top' : '', records)).join('')
+  $('day-list').innerHTML = items.map((a, i) => row(a, rec.ids.has(a.id) ? 'best' : i === 0 ? 'top' : '', rec)).join('')
     || '<li>No attempts on this day.</li>';
 }
 
@@ -124,7 +131,7 @@ function renderHome() {
   renderChart(week);
   // the chart's days as a list, today on top: each day's own best, or a dash if she didn't practise
   $('highs').innerHTML = [...week].reverse().map(d => `<li class="${d.record ? 'best' : ''}">
-    <time>${d.date.toLocaleDateString(undefined, { weekday: 'long' })}${d.at ? ` - ${d.at}` : ''}</time><strong>${d.record ? '<span class="record-dot series-record"></span>' : ''}${d.own ? fmt(d.own) + 's' : '–'}</strong>
+    <time>${d.date.toLocaleDateString(undefined, { weekday: 'long' })}${d.at ? ` - ${d.at}` : ''}</time><strong>${d.record ? DOT : ''}${d.own ? fmt(d.own) + 's' : '–'}</strong>
   </li>`).join('');
 }
 
@@ -135,22 +142,17 @@ function renderHome() {
 // - record: the day her current all-time record was set (at most one day; none if it's older)
 function lastWeek() {
   const dayKey = d => localIso(d).slice(0, 10);
-  const durationsOn = day => attempts.filter(a => a.started_at.startsWith(day)).map(a => a.duration_ms);
+  const topOn = day => attempts.filter(a => a.started_at.startsWith(day)).reduce((b, a) => !b || a.duration_ms > b.duration_ms ? a : b, null);
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); return d; });
 
-  // the attempt that holds the all-time record (the first one, if two are equal)
-  const holder = attempts.reduce((b, a) => !b || a.duration_ms > b.duration_ms
-    || (a.duration_ms === b.duration_ms && a.started_at < b.started_at) ? a : b, null);
-  const recordDay = holder?.started_at.slice(0, 10);
+  const recordDay = records().current?.started_at.slice(0, 10);
 
   // the best of the last day with attempts before this week, carried into its first days
-  const earlier = attempts.filter(a => a.started_at < dayKey(days[0]));
-  const lastBefore = earlier.reduce((day, a) => a.started_at > day ? a.started_at : day, '');
-  let high = lastBefore ? Math.max(...durationsOn(lastBefore.slice(0, 10))) : null;
+  const lastBefore = attempts.reduce((t, a) => a.started_at < dayKey(days[0]) && a.started_at > t ? a.started_at : t, '');
+  let high = lastBefore ? topOn(lastBefore.slice(0, 10)).duration_ms : null;
 
   return days.map(date => {
-    const top = attempts.filter(a => a.started_at.startsWith(dayKey(date)))
-      .reduce((b, a) => !b || a.duration_ms > b.duration_ms ? a : b, null);
+    const top = topOn(dayKey(date));
     const own = top?.duration_ms ?? null, at = top?.started_at.slice(11, 16) ?? null;
     if (own) high = own;
     return { date, own, at, high, record: dayKey(date) === recordDay };
@@ -204,8 +206,6 @@ function renderChart(week) {
 // A tap on a tab is the moment iOS allows sound to be switched on for later
 $('tabs').onclick = unlockAudio;
 
-// ---- log: all attempts, grouped per day (renderLog, above) ----
-
 $('days').onclick = $('day-list').onclick = onAttemptTap;
 
 $('export').onclick = () => {
@@ -213,7 +213,7 @@ $('export').onclick = () => {
     ...attempts.map(a => [a.id, a.started_at, a.duration_ms, a.method, !!a.flagged].join(','))].join('\n');
   const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'handstand.csv' });
   link.click();
-  URL.revokeObjectURL(link.href);
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);   // straight away, Safari may not have the file yet
 };
 
 // ---- sound ----
@@ -298,16 +298,25 @@ function speak(text) {
 // "4 punt 8", "13": one decimal, said as "punt"
 const spokenTime = ms => (ms / 1000).toFixed(1).replace(/\.0$/, '').replace('.', ' punt ');
 
+// The debug box (the scan button, top right of the record screen), on or off, remembered on this device
+const DEBUG_KEY = 'handstand.debug';
+function showDebug(on) {
+  $('debug').hidden = !on;
+  $('debug-toggle').setAttribute('aria-pressed', String(on));
+  remember(DEBUG_KEY, on);
+}
+showDebug(!!recall(DEBUG_KEY, false));   // !!: stored as 1 or 0 before
+$('debug-toggle').onclick = () => showDebug($('debug').hidden);
+
 // Sound on/off (the speaker button on the record screen), remembered on this device
 const MUTE_KEY = 'handstand.muted';
-let muted = false;
-try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch {}
+let muted = !!recall(MUTE_KEY, false);   // !!: stored as 1 or 0 before
 $('mute').setAttribute('aria-pressed', String(muted));
 $('mute').onclick = () => {
   unlockAudio();   // a tap: the moment iOS allows sound, e.g. after reloading straight onto this screen
   muted = !muted;
   $('mute').setAttribute('aria-pressed', String(muted));
-  try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch {}
+  remember(MUTE_KEY, muted);
   if (muted) {   // also silence whatever is playing right now
     try { playing?.stop(); } catch {}
     if ('speechSynthesis' in window) speechSynthesis.cancel();
@@ -341,7 +350,7 @@ let manualStart = null;   // a tapped attempt in progress (performance.now() at 
 function endAttempt(startTs, endTs, method, flagged = false, wait = 0) {
   const duration_ms = Math.round(endTs - startTs);
   if (duration_ms < MIN_MS) return duration_ms;
-  const record = best() > 0 && duration_ms > best();
+  const pb = best(), record = pb > 0 && duration_ms > pb;
   const id = Math.random().toString(36).slice(2, 8);
   lastId = method === 'auto' ? id : null;   // only a detected attempt can be resumed by detection
   attempts.unshift({
@@ -409,7 +418,7 @@ let lastFrame = -1;   // time of the last frame analysed
 async function loadModel() {
   const { FilesetResolver, PoseLandmarker } = await import(MP + '/vision_bundle.mjs');
   const files = await FilesetResolver.forVisionTasks(MP + '/wasm');
-  return PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate: 'GPU' }, runningMode: 'VIDEO', numPoses: NUM_POSES });
+  return PoseLandmarker.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate: 'GPU' }, runningMode: 'VIDEO', numPoses: 1 });   // 2 was tried: it then reports one body twice (upright and flipped)
 }
 
 // Each model ('main', and 'flip' for the second opinion) is loaded once and shared by every visit to
@@ -467,38 +476,17 @@ function onFrame(now) {
   try { poses = landmarker.detectForVideo(v, now).landmarks; }
   catch (err) { return restartModel(err); }
   const lm = detector.frame(now, poses, v.videoWidth, v.videoHeight, () => flippedPoses(v, now));
-  draw(lm, poses, now);
+  pace(now);
+  draw(lm, poses);
   debug(now, lm, poses);
   frameReq = v.requestVideoFrameCallback(onFrame);
 }
 
-// The athlete's skeleton is drawn calmly. Positions go through a One Euro filter: strong smoothing
-// while a joint is nearly still (no wobble), little while it moves fast (no lag in a kick-up).
-// Visibility is averaged over a few frames so limbs don't blink. Display only: detection uses the raw pose.
-const SMOOTH = { minCutoff: 1.5, beta: 5, dCutoff: 1, visibility: 0.2 };
-let shown = null, shownTs = 0;   // the smoothed pose last drawn, and when
-
-function smoothPose(lm, ts) {
-  if (!lm) return null;
-  const dt = (ts - shownTs) / 1000;
-  shownTs = ts;
-  if (!shown || dt <= 0 || dt > 0.3) {   // first sight, or lost for a while: start from where she is
-    shown = lm.map(p => ({ x: p.x, y: p.y, visibility: p.visibility, dx: 0, dy: 0 }));
-    return shown;
-  }
-  const alpha = cutoff => 1 / (1 + 1 / (2 * Math.PI * cutoff * dt));
-  shown = shown.map((q, i) => {
-    const p = lm[i];
-    const dx = q.dx + alpha(SMOOTH.dCutoff) * ((p.x - q.x) / dt - q.dx);
-    const dy = q.dy + alpha(SMOOTH.dCutoff) * ((p.y - q.y) / dt - q.dy);
-    const k = alpha(SMOOTH.minCutoff + SMOOTH.beta * Math.hypot(dx, dy));
-    return { x: q.x + k * (p.x - q.x), y: q.y + k * (p.y - q.y), dx, dy,
-             visibility: q.visibility + SMOOTH.visibility * (p.visibility - q.visibility) };
-  });
-  return shown;
-}
-
-function draw(lm, poses, ts) {
+// The skeletons as the model sees them, this frame. (A One Euro filter smoothed her skeleton for a
+// calmer look; dropped as not worth its code. Detection always used the raw pose.)
+// The skeleton's colours: the style.css tokens, read on the first frame (the styles have loaded by then)
+let skin = null;
+function draw(lm, poses) {
   const cv = $('overlay'), v = $('video'), g = cv.getContext('2d'), s = detector.state;
   if (cv.width !== v.videoWidth) { cv.width = v.videoWidth; cv.height = v.videoHeight; }
   g.clearRect(0, 0, cv.width, cv.height);
@@ -512,27 +500,56 @@ function draw(lm, poses, ts) {
     }
     g.stroke();
   };
-  for (const p of poses) if (p !== lm) skeleton(p, '#8b90a380');   // ignored: phantoms, bystanders
+  skin ??= Object.fromEntries(['--dim', '--wait', '--ready'].map(t => [t, getComputedStyle(document.documentElement).getPropertyValue(t).trim()]));
+  g.globalAlpha = 0.5;   // ignored poses (phantoms, bystanders): faint
+  for (const p of poses) if (p !== lm) skeleton(p, skin['--dim']);
+  g.globalAlpha = 1;
   const hint = lm && s.startTs === null ? framingHint(lm) : null;
-  const status = s.startTs !== null ? 'Up!' : !lm ? 'No one in view' : hint ?? 'Ready – kick up, side-on works best';
-  if ($('status').textContent !== status) $('status').textContent = status;   // only when it changes
-  const calm = smoothPose(lm, ts);
-  if (calm) skeleton(calm, hint ? '#ffb347' : '#3ddc84');   // amber: part of her is out of frame
+  const warn = s.startTs === null && slow;
+  const status = s.startTs !== null ? 'Up!' : warn ? slowWarning() : !lm ? 'No one in view' : hint ?? 'Ready – kick up, side-on works best';
+  // only when it changes (the icon has no text, so textContent is the message alone)
+  if ($('status').textContent !== status) $('status').innerHTML = (warn ? ALERT : '') + status;
+  if (lm) skeleton(lm, hint ? skin['--wait'] : skin['--ready']);   // amber: part of her is out of frame
+}
+
+// Frame rate check. The bake-off on all recorded clips timed 59 of 60 attempts at 30 fps, but only 44
+// at 15 fps: with too few frames the model loses her in the fast kick-up. So below MIN_FPS the status
+// warns, and says why: the camera sends too few frames (usually too dark: it keeps its shutter open
+// longer), or the device can't analyse them fast enough (busy: ms per frame). Cleared above FPS_OK, so
+// it doesn't flicker; checked only after the first WARM_MS, while the camera and model settle.
+// (20 is a judgement between the two measured rates: 30 fps was fine, 15 fps was not.)
+const MIN_FPS = 20, FPS_OK = 24, WARM_MS = 3000;
+let fps = 0, busy = 0, prevNow = 0, paceFrom = null, slow = false;
+function pace(now) {
+  paceFrom ??= now;
+  const gap = now - prevNow;
+  prevNow = now;
+  if (gap > 0 && gap < 1000) fps = fps * 0.95 + (1000 / gap) * 0.05;   // a longer gap: a camera switch
+  busy = busy * 0.9 + (performance.now() - now) * 0.1;
+  if (now - paceFrom > WARM_MS) slow = fps < (slow ? FPS_OK : MIN_FPS);
+}
+const ALERT = '<svg class="alert" viewBox="0 0 24 24" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>';   // Lucide triangle-alert
+const slowWarning = () => busy > 0.8 * 1000 / fps
+  ? `Only ${fps.toFixed(0)} fps – this device is too slow, attempts may be missed`
+  : `Only ${fps.toFixed(0)} fps – add light, or attempts may be missed`;
+// A new camera or session: measure afresh
+function resetPace() {
+  fps = busy = prevNow = 0;
+  paceFrom = null;
+  slow = false;
 }
 
 // Debug readout: landmark numbers are visibility in %, left then right; detection needs > 50 (ankles > 30).
 // Written four times a second: every frame was work for nothing, and frames are what detection needs.
 // The last lines are the session's latest near misses (see noteMiss), newest first.
-let fps = 0, prevNow = 0, debugAt = 0;
+let debugAt = 0;
 function debug(now, lm, poses) {
-  fps = fps * 0.9 + (1000 / (now - prevNow)) * 0.1;
-  prevNow = now;
-  if (now - debugAt < 250) return;
+  if ($('debug').hidden || now - debugAt < 250) return;   // hidden: no work at all
   debugAt = now;
   const s = detector.state;
   const v = (...ids) => ids.map(i => lm ? Math.round(lm[i].visibility * 100) : '--').join(' ');
   $('debug').textContent = [
-    `${fps.toFixed(0)} fps  ${(performance.now() - now).toFixed(0)} ms  poses ${poses.length}${s.locked ? ' locked' : ''}`,
+    `${fps.toFixed(0)} fps  ${busy.toFixed(0)} ms  poses ${poses.length}${s.locked ? ' locked' : ''}`,
     `${$('video').videoWidth}x${$('video').videoHeight}`,
     `${s.startTs === null ? 'idle' : 'up'}  inv ${s.invRun}/${s.confirm}  down ${s.downRun}/${s.confirm}`,
     `nose  ${v(0)}`, `wrist ${v(15, 16)}`, `hip   ${v(23, 24)}`, `ankle ${v(27, 28)}`,
@@ -559,11 +576,11 @@ function notice(text) {
 
 // ---- camera: back or front, and on the back 1× or 0.5× (the ultra wide lens), remembered here ----
 let camera = { facing: 'environment', zoom: 1 };
-try { camera = { ...camera, ...JSON.parse(localStorage.getItem(CAMERA_KEY)) }; } catch {}
+camera = { ...camera, ...recall(CAMERA_KEY, {}) };
 let ultraWide = null;   // device id of the back ultra wide lens, the iPhone's "0.5×"
 
 async function openCamera() {
-  const get = pick => navigator.mediaDevices.getUserMedia({ audio: false, video: { width: { ideal: 640 }, height: { ideal: 480 }, ...pick } });
+  const get = pick => navigator.mediaDevices.getUserMedia({ audio: false, video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 }, ...pick } });
   if (camera.facing === 'environment' && camera.zoom === 0.5 && ultraWide) {
     try { return await get({ deviceId: { exact: ultraWide } }); } catch {}   // gone: the normal back camera
   }
@@ -574,7 +591,7 @@ async function openCamera() {
   catch { return get({ facingMode: { ideal: camera.facing } }); }
 }
 
-// Stop the current camera and start the one `camera` asks for
+// Stop the current camera, if any, and start the one `camera` asks for
 async function reopenCamera() {
   stream?.getTracks().forEach(t => t.stop());
   const s = await openCamera();
@@ -609,12 +626,12 @@ function showZoom() {
 
 // A tap on flip or a lens: a different view, so tracking starts afresh
 async function switchCamera() {
-  try { localStorage.setItem(CAMERA_KEY, JSON.stringify(camera)); } catch {}
+  remember(CAMERA_KEY, camera);
   showZoom();
   if (!live) return;
   $('video').cancelVideoFrameCallback(frameReq);
   detector.reset();
-  shown = null;
+  resetPace();
   try {
     await reopenCamera();
     if (live && landmarker) frameReq = $('video').requestVideoFrameCallback(onFrame);
@@ -640,16 +657,14 @@ async function startSession() {
   live = true;
   manualStart = null;
   detector.reset();
-  shown = null;
+  resetPace();
   $('timer').textContent = '0.00';
   $('status').textContent = 'Starting camera…';
   tick();
   try { wake = await navigator.wakeLock?.request('screen'); } catch {}
   try {
-    const s = await openCamera();
-    if (!live) return s.getTracks().forEach(t => t.stop());
-    useStream(s);
-    await $('video').play();
+    await reopenCamera();
+    if (!live) return;
     await findCameras().catch(console.error);
     loadChimes();   // in the background, ready by the first landing
     // the ultra wide lens can only be found once a camera is open: switch to it now if it was chosen
@@ -666,6 +681,10 @@ async function startSession() {
 }
 
 function endSession() {
+  // Leaving mid-attempt (another tab): log it as it stands, ended now. A detected one is flagged: its
+  // landing wasn't seen.
+  if (manualStart !== null) endAttempt(manualStart, performance.now(), 'manual');
+  else if (detector.state.startTs !== null) endAttempt(detector.state.startTs, performance.now(), 'auto', true);
   live = false;
   manualStart = null;
   $('video').cancelVideoFrameCallback(frameReq);   // or the pending request runs as a second loop next session
