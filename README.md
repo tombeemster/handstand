@@ -45,7 +45,7 @@ Lists the attempts and near misses found per video. Videos stay out of git (`.gi
 Each file in `sounds/` whose name starts with a number of seconds (`04s-level-up.wav`) is the chime for a
 hold longer than that; the longest level reached plays when the timer stops, before the time is spoken.
 Several files with the same number (`01s-a.wav`, `01s-b.wav`) are variants: a random one plays, never the
-same one twice in a row. Add, remove or rename a file and the app picks it up: locally straight away, on the live site once pushed.
+same one twice in a row. A file starting with `error` is the sound for a handstand that wasn't timed. Add, remove or rename a file and the app picks it up: locally straight away, on the live site once pushed.
 Formats: wav, mp3, m4a (not ogg: iPhone can't play it).
 
 Sources:
@@ -57,7 +57,7 @@ Sources:
   [Jingle_Win_00.wav](https://freesound.org/s/270333/) by LittleRobotSoundFactory
 - From Freesound, CC0: [Level Up](https://freesound.org/s/442943/) by qubodup;
   [8bit Powerup](https://freesound.org/s/464908/) by plasterbrain
-- From [Kenney](https://kenney.nl), CC0: the `confirmation` sounds (Interface Sounds)
+- From [Kenney](https://kenney.nl), CC0: the `confirmation` and `error-scroll` sounds (Interface Sounds)
 - Generated with ElevenLabs: the two `ElevenLabs_…` files
 
 Icons: [Lucide](https://lucide.dev) (ISC licence).

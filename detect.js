@@ -11,9 +11,19 @@ const CONFIRM = 3, LOST_MS = 500, HISTORY_MS = 3000, BACKDATE_MS = 2000;
 // webcam); a headstand from kneeling with the hands already down 2.9 s, other headstands never stood.
 // (Measuring to when the hands land instead was tried: hands placed while kneeling fooled it.)
 const STAND_MS = 1500;
-// An attempt that restarts within MERGE_MS of ending was one attempt: nobody lands and kicks up
-// again that fast, but the model can lose her for a moment (e.g. someone walking past)
-export const MERGE_MS = 600;
+// An attempt confirmed again soon after its landing was one attempt: the model "landed" her for a moment
+// (a foot dipping to hip height in a split, frames fitted the wrong way up, someone walking past). Soon:
+// within MERGE_MS of the landing, or within MERGE_LATE_MS if her feet never dropped further than
+// MERGE_DROP torso lengths below her hips (a real fall puts them on the floor).
+// Timed from the landing to the new confirmation, not to the backdated start: the backdating goes back
+// to when her hands were planted, and in a fall-and-kick-again they never leave the floor, so that gap
+// was always negative and any bounce kept the timer going (it had been "restarts within 600 ms").
+// Measured, landing to confirmation and feet drop: misreads 167–502 ms at 30 fps (drop 0.10–2.12),
+// 800 ms at 15 fps (drop 0.47); real falls and a short kick again 802–965 ms (drop 1.74–2.35); a fall
+// and kick back up 1368–1600 ms (drop 3.05–3.51, hack.MOV). Time alone can't tell the 800 ms misread
+// from the 802 ms fall, the drop alone can't tell the 2.12 misread from the 1.74 fall: together they do.
+export const MERGE_MS = 600, MERGE_LATE_MS = 1000;
+const MERGE_DROP = 1;
 // Lock: the first person seen is the athlete. After that only a pose near her last position counts
 // (reach grows by SPEED body-heights per second unseen), so phantoms and passers-by are skipped.
 // Unseen for LOCK_MS between attempts releases the lock: the next person seen is the athlete.
@@ -130,7 +140,7 @@ export function createDetector({ onStart, onEnd, onMiss = () => {} }) {
 
   function finish(endTs, flagged = false) {
     const start = startTs;
-    last = { start, end: endTs };
+    last = { start, end: endTs, drop: 0 };
     startTs = null; invRun = 0;
     onEnd(start, endTs, flagged);
   }
@@ -157,6 +167,11 @@ export function createDetector({ onStart, onEnd, onMiss = () => {} }) {
     while (hist[0].ts < ts - HISTORY_MS) hist.shift();
 
     if (startTs === null) {
+      // since the last landing: how far her feet got below her hips, in torso lengths (see MERGE_DROP)
+      if (last !== null && ts - last.end < MERGE_LATE_MS && hips.length && ankles.length && [11, 12].every(i => lm[i].visibility > VIS)) {
+        const torso = Math.abs(hip - (lm[11].y + lm[12].y) / 2) || 0.01;
+        last.drop = Math.max(last.drop, (Math.max(...ankles) - hip) / torso);
+      }
       const ordered = tracked && wrist !== null && orderInverted(lm);
       const inverted = ordered && upright(lm);
       invRun = inverted ? invRun + 1 : 0;
@@ -172,7 +187,9 @@ export function createDetector({ onStart, onEnd, onMiss = () => {} }) {
           if (Math.abs(hist[i].wrist - wrist) > tol) break;
           t = hist[i].ts;
         }
-        const resumed = last !== null && t - last.end < MERGE_MS;   // same attempt, continued
+        const gap = last === null ? Infinity : ts - last.end;
+        const resumed = gap < MERGE_MS || (gap < MERGE_LATE_MS && last.drop < MERGE_DROP);   // same attempt, continued
+        if (last !== null) t = Math.max(t, last.end);   // a new attempt never starts before the last one ended
         // kicked up from standing (see STAND_MS); static phantoms (pillows) never stand either
         const kickedUp = hist.some(f => f.standing && ts - f.ts <= STAND_MS);
         if (resumed || kickedUp) {

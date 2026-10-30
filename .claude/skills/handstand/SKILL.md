@@ -32,7 +32,7 @@ Never tune a rule on a guess.
 4. Accept a change only if it gains without losing on any clip. The replay's near-miss lines show which rule blocked what.
 5. Record in the code comment what was measured, and any variant that was tried and dropped.
 
-Known traps: the model fits straight front-on handstands upside down (feet as raised hands); it latches onto phantoms (pillows, a mattress, table clutter); live analysis runs at a lower fps than a 30 fps replay; the scratch Python environment gets wiped by temp cleanup.
+Before adding a miss signal, count its false alarms on the recordings too: "seen standing, then lost" fired after nearly every landing. Known traps: the model fits straight front-on handstands upside down (feet as raised hands); it latches onto phantoms (pillows, a mattress, table clutter); live analysis runs at a lower fps than a 30 fps replay; the scratch Python environment gets wiped by temp cleanup.
 
 ## Sounds
 

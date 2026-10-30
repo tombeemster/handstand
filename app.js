@@ -1,4 +1,4 @@
-import { createDetector, framingHint, VIS, ANKLE_VIS, MIN_MS, MERGE_MS } from './detect.js';
+import { createDetector, framingHint, VIS, ANKLE_VIS, MIN_MS, MERGE_MS, MERGE_LATE_MS } from './detect.js';
 
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
@@ -313,6 +313,7 @@ let audio;   // the Web Audio engine, started by the first tap (unlockAudio)
 // Level-up chimes: every file in sounds/ whose name starts with a number of seconds ("04s-…") is the
 // chime for a hold longer than that; the longest level reached plays when the timer stops. Several files
 // with the same number are variants of one level: a random one plays, never the same one twice in a row.
+// Files starting with "error" are the not-timed sound (see noteMiss), picked the same way.
 // Adding, removing or renaming a file is all it takes. Credits in README.md.
 // A page can't list a folder itself, so the server does: GitHub's file list for the repo on the live
 // site, the folder listing of `npx serve` locally. Both answer in JSON, as [{ name }] or { files: [{ base }] } (where name lacks the extension).
@@ -320,33 +321,48 @@ async function soundFiles() {
   const [owner] = location.hostname.split('.'), [, repo] = location.pathname.split('/');
   const url = location.hostname.endsWith('.github.io') ? `https://api.github.com/repos/${owner}/${repo}/contents/sounds` : 'sounds/';
   const list = await (await fetch(url, { headers: { Accept: 'application/json' } })).json();
-  return (list.files ?? list).map(f => f.base ?? f.name).filter(name => /^\d+s.*\.(wav|mp3|m4a)$/i.test(name));
+  return (list.files ?? list).map(f => f.base ?? f.name).filter(name => /^(\d+s|error).*\.(wav|mp3|m4a)$/i.test(name));
 }
 
-// The chimes, decoded once into the Web Audio engine, as [seconds, sounds] from short to long. (Not
-// <audio> elements: unlocking those on iPhone meant playing one muted on every tap, and that let a
-// sound go off at random.) A file that won't load or decode is skipped; a level without any plays the one below.
-let chimes = null, playing = null, lastChime = null;
-function loadChimes() {
+// The sounds, decoded once into the Web Audio engine: chimes as [seconds, sounds] from short to long,
+// and the error sounds. (Not <audio> elements: unlocking those on iPhone meant playing one muted on every
+// tap, and that let a sound go off at random.) A file that won't load or decode is skipped; a level
+// without any plays the one below.
+let sounds = null, playing = null, lastSound = null;
+function loadSounds() {
   audio ??= new AudioContext();
-  return chimes ??= soundFiles()
+  return sounds ??= soundFiles()
     .then(files => Promise.all(files.map(name => fetch('sounds/' + encodeURIComponent(name))
       .then(r => r.arrayBuffer()).then(b => audio.decodeAudioData(b))
-      .then(sound => [parseInt(name), sound], err => console.error(name, err)))))
+      .then(sound => [name, sound], err => console.error(name, err)))))
     .then(list => {
-      const levels = new Map();
-      for (const [seconds, sound] of list.filter(Boolean)) levels.set(seconds, [...(levels.get(seconds) ?? []), sound]);
-      return [...levels].sort((p, q) => p[0] - q[0]);
+      const levels = new Map(), errors = [];
+      for (const [name, sound] of list.filter(Boolean)) {
+        if (/^error/i.test(name)) errors.push(sound);
+        else levels.set(parseInt(name), [...(levels.get(parseInt(name)) ?? []), sound]);
+      }
+      return { chimes: [...levels].sort((p, q) => p[0] - q[0]), errors };
     })
-    .catch(err => { console.error(err); return []; });   // no list (offline?): no chimes, the time is still spoken
+    .catch(err => { console.error(err); return { chimes: [], errors: [] }; });   // no list (offline?): no sounds, the time is still spoken
 }
 
 // Plays the chime for a hold of ms, then calls done (straight away if the hold earns none)
 async function chime(ms, done) {
-  const sounds = (await loadChimes()).findLast(([seconds]) => ms > seconds * 1000)?.[1];
-  if (!sounds) return done();
-  const fresh = sounds.length > 1 ? sounds.filter(s => s !== lastChime) : sounds;
-  const sound = lastChime = fresh[Math.floor(Math.random() * fresh.length)];
+  const choices = (await loadSounds()).chimes.findLast(([seconds]) => ms > seconds * 1000)?.[1];
+  if (!choices) return done();
+  play(choices, done);
+}
+
+// The not-timed sound (see noteMiss), unless muted
+async function errorSound() {
+  const { errors } = await loadSounds();
+  if (!muted && errors.length) play(errors);
+}
+
+// Plays one of choices, at random but not the one played last, then calls done
+function play(choices, done = () => {}) {
+  const fresh = choices.length > 1 ? choices.filter(s => s !== lastSound) : choices;
+  const sound = lastSound = fresh[Math.floor(Math.random() * fresh.length)];
   let finished = false;
   const finish = () => { if (!finished) { finished = true; playing = null; done(); } };
   playing = audio.createBufferSource();
@@ -457,16 +473,25 @@ function endAttempt(startTs, endTs, method, flagged = false, wait = 0) {
 }
 
 // Near misses this session, newest first: she was upside down but no attempt was timed, and why.
-// Shown in the debug box. (Attempts under 1 s are noted here too.)
+// Shown in the debug box. (Attempts under 1 s are noted here too.) Each one is also heard and seen at
+// once, the error sound and "Not timed", so she can go again straight away. Held back MERGE_MS: an
+// attempt starting by then means it wasn't a miss after all (see onStart).
+// (Flagging more, "seen standing, then lost" or "shoulders below the hips", was measured on all the
+// recordings: lost fired after nearly every landing, 31 times; the shoulders cue caught nothing the
+// near misses didn't already, at 30 fps or at 15. Every attempt the 15 fps replay lost was a near miss.)
 const misses = [];
+let missing;   // the pending sound and notice of the latest miss
 function noteMiss(ts, why) {
   misses.unshift({ at: new Date(Date.now() - (performance.now() - ts)).toTimeString().slice(0, 8), why });
   console.info('near miss', misses[0]);
+  clearTimeout(missing);
+  missing = setTimeout(() => { notice('Not timed – go again'); errorSound(); }, MERGE_MS);
 }
 
 const detector = createDetector({
   onStart(ts, resumed) {
     if (manualStart !== null) return;   // timing by tap: detection doesn't interfere
+    clearTimeout(missing);   // a miss just before was the start of this one
     if (resumed) clearTimeout(announcing);   // it hadn't really ended: say nothing
     if (resumed && lastId) { attempts = attempts.filter(a => a.id !== lastId); save(); }
     lastId = null;
@@ -474,9 +499,9 @@ const detector = createDetector({
   },
   onEnd(startTs, endTs, flagged) {
     if (manualStart !== null) return;
-    // announced once the attempt can no longer resume (see MERGE_MS), so a short loss of
+    // announced once the attempt can no longer resume (see MERGE_LATE_MS), so a short loss of
     // tracking isn't announced as a landing
-    const ms = endAttempt(startTs, endTs, 'auto', flagged, MERGE_MS);
+    const ms = endAttempt(startTs, endTs, 'auto', flagged, MERGE_LATE_MS);
     if (ms < MIN_MS) noteMiss(startTs, `timed ${fmt(ms)} s, under 1 s`);
     $('timer').textContent = fmt(ms);
   },
@@ -759,7 +784,7 @@ async function startSession() {
     await reopenCamera();
     if (!live) return;
     await findCameras().catch(console.error);
-    loadChimes();   // in the background, ready by the first landing
+    loadSounds();   // in the background, ready by the first landing
     // the ultra wide lens can only be found once a camera is open: switch to it now if it was chosen
     if (wantsUltraWide() && stream.getVideoTracks()[0].getSettings().deviceId !== ultraWide) await reopenCamera();
     if (!live) return;
