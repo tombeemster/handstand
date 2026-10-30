@@ -12,13 +12,14 @@ Dark, calm and restrained: a few tiles on a near-black page, no decoration. The 
 - **White:** values (the daily high, the average) and the active tab.
 - **Dim grey:** labels, inactive tabs, axis text.
 - **Amber (`--wait`) is for "not ready":** the skeleton when part of her is out of frame, the alert icon when the frame rate is too low.
+- **Red (`--danger`) is for deleting for good:** the Delete all attempts and Delete daily attempts buttons, and a row's swipe-to-delete.
 - **Skeleton on the camera:** green when she's framed and ready, amber when part of her is out of frame, faint grey for poses the app ignores.
 - A value and its chart line share one colour through a `series-*` class (`series-record`, `series-best`, `series-avg`), so a tile and its line can't drift apart.
 
 ## Chart
 
-- **Solid line with a fading area:** each day's high, the last 7 days, today on the right. A day without attempts carries the previous value flat.
-- **Dashed lines:** all-time values, the record (gold) and the average (white).
+- **Solid line with a fading area:** each day's high, 7 days on screen with today on the right; swipe for the weeks back to her first attempt. A day without attempts carries the previous value flat.
+- **Dashed lines:** all-time values, the record (gold) and the average (white). Tapping the Record or Average tile makes its line flicker 3 times while its dashes run, to show which line is which.
 - **One record dot, at most:** on the day the current record was set, where the daily line meets the record line. The same dot marks the current record in every list.
 - **Y axis:** whole even seconds, at most 8 faint gridlines.
 

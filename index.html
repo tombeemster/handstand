@@ -15,14 +15,20 @@
 
 <section id="home">
   <h1>Handstand</h1>
+  <!-- before her first attempt: this tile alone, in place of the others -->
+  <div id="home-empty">
+    <p>You haven't logged your first handstand yet.</p>
+    <a class="button" href="#record">Start recording</a>
+  </div>
   <div id="tiles">
-    <div class="tile series-record">Record <b id="best">–</b></div>
-    <div class="tile series-avg">Average <b id="average">–</b></div>
+    <!-- a tap lights up the tile's line in the chart (data-line) -->
+    <div class="tile series-record" data-line="series-record">Record <b id="best">–</b></div>
+    <div class="tile series-avg" data-line="series-avg">Average <b id="average">–</b></div>
   </div>
   <figure id="chart"></figure>
   <!-- the chart's seven days as a list, today on top. Arrow icon: Lucide arrow-right -->
   <div class="day">
-    <div class="day-label">Daily highs</div>
+    <div class="day-label">Daily Highs</div>
     <ul id="highs"></ul>
     <a class="day-footer" href="#log">All attempts <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
   </div>
@@ -64,7 +70,8 @@
 <section id="log" hidden>
   <h1>Handstand</h1>
   <div id="days"></div>
-  <button id="export">Export CSV</button>
+  <button id="export">Export log (.csv)</button>
+  <button id="delete-all">Reset log</button>
 </section>
 
 <!-- one day of the log, all attempts in time order (#log/2026-10-23). Back icon: Lucide arrow-left -->
@@ -75,6 +82,7 @@
     <div class="day-label tile-header" id="day-title"></div>
     <ul id="day-list"></ul>
   </div>
+  <button id="clear-day">Delete attempts</button>
 </section>
 
 <!-- Tab bar, on every screen: home, record, log. Icons: Lucide (user, video, logs), ISC licence, lucide.dev -->

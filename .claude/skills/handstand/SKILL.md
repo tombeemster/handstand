@@ -43,6 +43,15 @@ The chimes are found by listing `sounds/` (see `soundFiles` in `app.js`). Traps 
 - **The list is loaded once per page:** reload after adding or renaming a file.
 - **iPhone's Safari is the baseline:** avoid recent JavaScript (e.g. `Map.groupBy`); one failure there silences every chime.
 
+## Screens
+
+Values that live in both `app.js` and `style.css` (keep them in step; each side's comment names the other):
+
+- **Chart:** two drawings at one scale, the fixed seconds labels and the scrolling plot. Their split is `L / W` in `renderChart` and `9.375%` in `#chart .seconds`.
+- **Swipe to delete:** `OPEN` (80 px) is the Delete button's width in `.row-delete`; the 200 ms wait before a long-swipe delete is the rows' transition.
+
+Touch traps: a sideways gesture needs `touch-action: pan-y` on the row so up and down still scroll, and swipe or scroll is decided on the first 8 px of movement. Respect `prefers-reduced-motion` for anything that moves.
+
 ## Test data
 
 Give the maker console snippets that write `handstand.attempts` in localStorage, and always keep a one-time backup (`handstand.attempts.backup`) plus a restore snippet. Real data: `data/load-real-data.js` loads the newest export in `data/` (by the date in its name) when pasted on localhost.

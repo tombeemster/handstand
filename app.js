@@ -47,9 +47,9 @@ const dayLabel = day => new Date(day + 'T12:00').toLocaleDateString(undefined, {
 const DOT = '<span class="record-dot series-record"></span>';
 
 // One attempt as a list row: its date and time, its duration; cls: 'best' (a record), 'top' or ''.
-// rec: records(), for the dot on the current record.
-const row = (a, cls, rec) => `<li class="${cls}" data-id="${a.id}">
-  <time>${stamp(a)}</time><strong>${a === rec.current ? DOT : ''}${fmt(a.duration_ms)}s</strong>
+// rec: records(), for the dot on the current record; end: more inside the row (a day's Delete button).
+const row = (a, cls, rec, end = '') => `<li class="${cls}" data-id="${a.id}">
+  <time>${stamp(a)}</time><strong>${a === rec.current ? DOT : ''}${fmt(a.duration_ms)}s</strong>${end}
 </li>`;
 
 // The log: one tile per day, newest day first, each with that day's 3 longest attempts and an arrow to
@@ -60,6 +60,7 @@ const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><
 const longestFirst = items => [...items].sort((p, q) => q.duration_ms - p.duration_ms);
 
 function renderLog() {
+  $('delete-all').hidden = !attempts.length;
   const rec = records(), byDay = new Map();
   for (const a of attempts) {
     const day = a.started_at.slice(0, 10);
@@ -70,7 +71,12 @@ function renderLog() {
     <div class="day">
       <div class="day-label tile-header">${dayLabel(day)}<a href="#log/${day}" aria-label="All attempts of ${dayLabel(day)}">${ARROW}</a></div>
       <ul>${longestFirst(items).slice(0, LOG_TOP).map(a => row(a, rec.ids.has(a.id) ? 'best' : '', rec)).join('')}</ul>
-    </div>`).join('') || '<p>No attempts yet.</p>';
+    </div>`).join('')
+    // before her first attempt: today's tile, empty, with no arrow to a day page
+    || `<div class="day">
+      <div class="day-label tile-header">${dayLabel(localIso(new Date()).slice(0, 10))}</div>
+      <ul><li>No attempts yet.</li></ul>
+    </div>`;
 }
 
 // A day's own page: all its attempts, longest first. Records at their time are marked "best" (gold);
@@ -79,18 +85,74 @@ function renderDay(day) {
   const rec = records();
   const items = longestFirst(attempts.filter(a => a.started_at.startsWith(day)));
   $('day-title').textContent = dayLabel(day);
-  $('day-list').innerHTML = items.map((a, i) => row(a, rec.ids.has(a.id) ? 'best' : i === 0 ? 'top' : '', rec)).join('')
+  $('day-list').innerHTML = items.map((a, i) => row(a, rec.ids.has(a.id) ? 'best' : i === 0 ? 'top' : '', rec, DELETE)).join('')
     || '<li>No attempts on this day.</li>';
+  $('clear-day').hidden = !items.length;
 }
 
-// Tapping an attempt in the log or on a day's page offers to delete it (false starts, mis-timed holds)
-function onAttemptTap(e) {
+// The button under a day's page: deletes all that day's attempts, then back to the log
+$('clear-day').onclick = () => {
+  const n = attempts.filter(a => a.started_at.startsWith(day)).length;
+  if (!confirm(`Delete all ${n} attempt${n === 1 ? '' : 's'} of ${dayLabel(day)}?`)) return;
+  attempts = attempts.filter(a => !a.started_at.startsWith(day));
+  save();
+  location.hash = '#log';
+};
+
+// On a day's page, swiping a row left shows its Delete button; tapping that deletes the attempt (false
+// starts, mis-timed holds). A long swipe, past half the row, deletes it at once. One row is open at a
+// time; a tap elsewhere in the list closes it. The log's day tiles don't delete: the day's page is the one place.
+const DELETE = '<button class="row-delete">Delete</button>';
+const OPEN = 80;   // px: how far an open row is slid, the Delete button's width (style.css)
+let swipe = null, opened = null;   // the drag under way; the row left open
+const slide = (li, dx) => li.style.setProperty('--dx', dx + 'px');
+function closeRow() {
+  if (opened) slide(opened, 0);
+  opened = null;
+}
+
+$('day-list').onpointerdown = e => {
   const li = e.target.closest('li[data-id]');
-  const a = li && attempts.find(a => a.id === li.dataset.id);
-  if (a && confirm(`Delete the attempt of ${stamp(a)} (${fmt(a.duration_ms)}s)?`)) {
-    attempts = attempts.filter(x => x.id !== a.id);
-    save();
+  if (!li || e.target.closest('.row-delete')) return;
+  const wasOpen = li === opened;
+  if (!wasOpen) closeRow();
+  swipe = { li, x: e.clientX, y: e.clientY, from: wasOpen ? -OPEN : 0, dx: null, width: li.offsetWidth };   // dx: null until it moves sideways
+};
+$('day-list').onpointermove = e => {
+  if (!swipe) return;
+  const mx = e.clientX - swipe.x, my = e.clientY - swipe.y;
+  if (swipe.dx === null) {
+    if (Math.abs(my) > 8 && Math.abs(my) > Math.abs(mx)) { swipe = null; return; }   // scrolling the page
+    if (Math.abs(mx) < 8) return;
+    swipe.li.classList.add('dragging');   // follows the finger, no easing
+    swipe.li.setPointerCapture(e.pointerId);
   }
+  swipe.dx = Math.min(0, Math.max(-swipe.width, swipe.from + mx));
+  slide(swipe.li, swipe.dx);
+};
+$('day-list').onpointerup = $('day-list').onpointercancel = () => {
+  if (!swipe) return;
+  const { li, dx, width } = swipe;
+  swipe = null;
+  if (dx === null) return closeRow();   // a tap
+  li.classList.remove('dragging');
+  if (dx <= -width / 2) {   // a long swipe: slides all the way out, then it's gone
+    slide(li, -width);
+    opened = null;
+    return setTimeout(() => deleteAttempt(li.dataset.id), 200);   // the slide's duration (style.css)
+  }
+  opened = dx < -OPEN / 2 ? li : null;   // past half the button: snaps open, else back
+  slide(li, opened ? -OPEN : 0);
+};
+$('day-list').onclick = e => {
+  const id = e.target.closest('.row-delete')?.closest('li').dataset.id;
+  if (!id) return;
+  opened = null;
+  deleteAttempt(id);
+};
+function deleteAttempt(id) {
+  attempts = attempts.filter(a => a.id !== id);
+  save();
 }
 
 // ---- screens: #home (or none), #record, #log, one tab each. The camera is on only on #record. ----
@@ -123,51 +185,58 @@ addEventListener('hashchange', route);
 
 // ---- home ----
 function renderHome() {
+  // before her first attempt: only the "Record now" tile (style.css hides the rest)
+  $('home').classList.toggle('empty', !attempts.length);
+  if (!attempts.length) return;
   const pb = best();
   $('best').textContent = pb ? fmt(pb) + ' s' : '–';
   const avg = overallAverage();
   $('average').textContent = avg ? fmt(avg) + ' s' : '–';
-  const week = lastWeek();
-  renderChart(week);
-  // the chart's days as a list, today on top: each day's own best, or a dash if she didn't practise
-  $('highs').innerHTML = [...week].reverse().map(d => `<li class="${d.record ? 'best' : ''}">
+  const days = chartDays();
+  renderChart(days);
+  // the chart's last 7 days as a list, today on top: each day's own best, or a dash if she didn't practise
+  $('highs').innerHTML = days.slice(-7).reverse().map(d => `<li class="${d.record ? 'best' : ''}">
     <time>${d.date.toLocaleDateString(undefined, { weekday: 'long' })}${d.at ? ` - ${d.at}` : ''}</time><strong>${d.record ? DOT : ''}${d.own ? fmt(d.own) + 's' : '–'}</strong>
   </li>`).join('');
 }
 
-// The last 7 days, oldest first, as the chart and the Daily high list show them:
+// Every day from her first attempt's to today (at least the last 7), oldest first, as the chart and
+// the Daily highs list (its last 7) show them:
 // - own: that day's longest hold, or null if she didn't practise; at: when it started (hh:mm)
-// - high: what the chart draws, the last practice day's best carried over days without attempts (also
-//   from before this week); null only before her very first attempt
-// - record: the day her current all-time record was set (at most one day; none if it's older)
-function lastWeek() {
+// - high: what the chart draws, the last practice day's best carried over days without attempts;
+//   null only before her very first attempt
+// - record: the day her current all-time record was set (at most one day)
+function chartDays() {
   const dayKey = d => localIso(d).slice(0, 10);
-  const topOn = day => attempts.filter(a => a.started_at.startsWith(day)).reduce((b, a) => !b || a.duration_ms > b.duration_ms ? a : b, null);
-  const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - 6 + i); return d; });
+  const tops = new Map();   // each day's longest attempt (the first of equals)
+  for (const a of attempts) {
+    const day = a.started_at.slice(0, 10);
+    if (!(tops.get(day)?.duration_ms >= a.duration_ms)) tops.set(day, a);
+  }
+  const first = attempts.reduce((t, a) => a.started_at < t ? a.started_at : t, dayKey(new Date()));
+  const count = Math.max(7, Math.round((new Date(dayKey(new Date()) + 'T12:00') - new Date(first.slice(0, 10) + 'T12:00')) / 864e5) + 1);
+  const days = Array.from({ length: count }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (count - 1) + i); return d; });
 
   const recordDay = records().current?.started_at.slice(0, 10);
-
-  // the best of the last day with attempts before this week, carried into its first days
-  const lastBefore = attempts.reduce((t, a) => a.started_at < dayKey(days[0]) && a.started_at > t ? a.started_at : t, '');
-  let high = lastBefore ? topOn(lastBefore.slice(0, 10)).duration_ms : null;
-
+  let high = null;
   return days.map(date => {
-    const top = topOn(dayKey(date));
+    const top = tops.get(dayKey(date));
     const own = top?.duration_ms ?? null, at = top?.started_at.slice(11, 16) ?? null;
     if (own) high = own;
     return { date, own, at, high, record: dayKey(date) === recordDay };
   });
 }
 
-// The chart, over lastWeek(), today on the right, in the colours of the home tiles:
+// The chart, over chartDays(), in the colours of the home tiles. It shows 7 days at a time, today on
+// the right; swipe right for the weeks before. The seconds labels stay put on the left.
 // - daily high: a line through each day's high, with the area under it. One dot in the record colour
 //   marks the day her current record was set, where the line meets the record line. (Days without
 //   attempts after it carry that value, so the line can run along the record line until she practises
 //   again: kept on purpose over ending the line at the last practice day.)
 // - average of all her attempts ever (the Average tile) and the all-time record: dashed horizontal lines.
 //   (A line through each day's average was tried: it barely moves, the overall value says as much.)
-function renderChart(week) {
-  const days = week.map(d => d.date), bests = week.map(d => d.high), recordAt = week.map(d => d.record);
+function renderChart(chart) {
+  const days = chart.map(d => d.date), bests = chart.map(d => d.high), recordAt = chart.map(d => d.record);
   const avg = overallAverage(), allTime = best();
   // the scale: gridlines and labels at an even number of whole seconds apart, at most 8 of them,
   // the top one at or just above the best (6.7 s: 2, 4, 6, 8 · 72 s: 10, 20, … 80)
@@ -175,9 +244,12 @@ function renderChart(week) {
   const step = [2, 4, 10, 20, 30, 60, 120, 300, 600].map(s => s * 1000).find(s => highest <= s * 8) ?? Math.ceil(highest / 8 / 60000) * 60000;
   const top = Math.ceil(highest / step) * step;
   const ticks = Array.from({ length: top / step }, (_, i) => (i + 1) * step);
-  // L leaves just room for the axis labels ("8 s", later "10 s"), so the plot sits centred in the tile
-  const W = 320, H = 140, L = 30, R = 8, T = 10, B = 24;
-  const x = i => L + i * (W - L - R) / 6, y = v => T + (1 - v / top) * (H - T - B);
+  // Two drawings at one scale: the seconds labels, L wide (just room for "8 s", later "10 s"), and
+  // beside them the plot, 7 days to the visible W - L and as many more as there are days, scrolled.
+  // style.css gives the labels the same L / W of the tile's width, so the units match.
+  const W = 320, H = 140, L = 30, T = 10, B = 24;
+  const dayW = (W - L) / 7, plotW = days.length * dayW;
+  const x = i => (i + 0.5) * dayW, y = v => T + (1 - v / top) * (H - T - B);
 
   // the daily bests as a straight line from day to day, the area under it fading out downwards
   const pts = bests.map((v, i) => v === null ? null : [x(i), y(v)]).filter(Boolean);   // nulls only lead
@@ -189,24 +261,36 @@ function renderChart(week) {
       <path class="line" d="${line}"/>`;
   }
   const dots = bests.map((v, i) => recordAt[i] ? `<circle cx="${x(i)}" cy="${y(v)}" r="3.75"/>` : '').join('');   // 7.5 units across, about 7.5 px
-  const level = (value, cls) => value ? `<g class="${cls}"><line class="line dashed" x1="${x(0)}" y1="${y(value)}" x2="${x(6)}" y2="${y(value)}"/></g>` : '';
+  // class level: what a tap on the matching home tile lights up (see the tiles' onclick)
+  const level = (value, cls) => value ? `<g class="${cls} level"><line class="line dashed" x1="0" y1="${y(value)}" x2="${plotW}" y2="${y(value)}"/></g>` : '';
 
   const labels = days.map((d, i) => `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${d.toLocaleDateString(undefined, { weekday: 'narrow' })}</text>`).join('');
-  $('chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Best hold per day over the last 7 days, the all-time record and the overall average">
-    <line class="axis" x1="${L}" y1="${y(0)}" x2="${W - R}" y2="${y(0)}"/>
-    ${ticks.map(v => `<line class="grid" x1="${L}" y1="${y(v)}" x2="${W - R}" y2="${y(v)}"/>
-      <text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v / 1000} s</text>`).join('')}
+  $('chart').innerHTML = `<svg class="seconds" viewBox="0 0 ${L} ${H}" aria-hidden="true">
+    ${ticks.map(v => `<text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v / 1000} s</text>`).join('')}
+  </svg>
+  <div class="scroller"><svg viewBox="0 0 ${plotW} ${H}" style="width: ${days.length / 7 * 100}%" role="img" aria-label="Best hold per day, the all-time record and the overall average">
+    <line class="axis" x1="0" y1="${y(0)}" x2="${plotW}" y2="${y(0)}"/>
+    ${ticks.map(v => `<line class="grid" x1="0" y1="${y(v)}" x2="${plotW}" y2="${y(v)}"/>`).join('')}
     <g class="series-best">${dailyLine}</g>
     ${level(avg, 'series-avg')}${level(allTime, 'series-record')}
     <g class="series-record">${dots}</g>
     ${labels}
-  </svg>`;
+  </svg></div>`;
+  const scroller = $('chart').querySelector('.scroller');
+  scroller.scrollLeft = scroller.scrollWidth;   // start at today
 }
+
+// A tap on the Record or Average tile lights up its line in the chart, to show which is which
+$('tiles').onclick = e => {
+  const g = $('chart').querySelector(`.level.${e.target.closest('[data-line]')?.dataset.line}`);
+  if (!g) return;
+  g.classList.remove('flash');
+  g.getBoundingClientRect();   // restarts the animation on a second tap
+  g.classList.add('flash');
+};
 
 // A tap on a tab is the moment iOS allows sound to be switched on for later
 $('tabs').onclick = unlockAudio;
-
-$('days').onclick = $('day-list').onclick = onAttemptTap;
 
 $('export').onclick = () => {
   const csv = ['id,started_at,duration_ms,method,flagged',
@@ -214,6 +298,13 @@ $('export').onclick = () => {
   const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'handstand.csv' });
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);   // straight away, Safari may not have the file yet
+};
+
+// Under the export: empties the whole log, after asking (export first to keep a copy)
+$('delete-all').onclick = () => {
+  if (!confirm(`Delete all ${attempts.length} attempts? This can't be undone.`)) return;
+  attempts = [];
+  save();
 };
 
 // ---- sound ----

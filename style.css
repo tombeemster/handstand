@@ -18,10 +18,12 @@
   --bg: #11131a;
   --tile: #181a24;
   --text: #f2f3f7;
+  --text-invert: var(--bg);
   --dim: #8b90a3;
   --wait: #ffb347;
   --ready: #3ddc84;        /* her skeleton when she's framed and ready */
   --gold: #ffe388;
+  --danger: #ff5c5c;       /* deleting for good: the delete buttons, the swipe-to-delete */
   --scrim: #000a;          /* dark see-through backing for text on the camera view */
   --scrim-strong: #000c;
 
@@ -81,11 +83,11 @@ a {
 h1 {
   margin: 0;
   padding: var(--gap-m) 0;
-  font-size: 1rem;
-  font-weight: 500;
-  text-transform: uppercase;
+  font-size: 1.5rem;
+  font-weight: 400;
   text-align: center;
-  letter-spacing: 0.2em;
+  /* text-transform: uppercase; */
+  /* letter-spacing: 0.2em; */
 }
 
 ul {
@@ -164,6 +166,7 @@ li strong {
 }
 
 
+
 /* 4. Tab bar: fixed at the bottom of every screen, three equal tabs -------- */
 
 #tabs {
@@ -216,6 +219,8 @@ li strong {
   padding: var(--gap-m);
   margin: var(--gap-s) 0;
   box-shadow: var(--tile-shadow);
+  display: flex;
+  align-items: flex-start;
 }
 
 #chart svg {
@@ -224,6 +229,48 @@ li strong {
   height: auto;
   font-size: 11px;
   fill: var(--dim);        /* axis labels */
+}
+
+/* the seconds labels: 30 / 320 of the width, as app.js's L / W, so they match the plot's scale */
+#chart .seconds {
+  flex: 0 0 9.375%;
+}
+
+/* the plot: 7 days wide on screen, swipe for the weeks before (no scrollbar shown) */
+#chart .scroller {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;   /* a swipe at the end doesn't go back a page */
+  scrollbar-width: none;
+}
+
+#chart .scroller::-webkit-scrollbar {
+  display: none;
+}
+
+/* a tap on the Record or Average tile: its line flickers off and on 3 times while its dashes run */
+#chart .level.flash .line {
+  animation: flicker 0.6s step-end, run 0.6s linear;
+}
+
+@keyframes flicker {
+  0%, 33%, 67% { opacity: 0; }
+  17%, 50%, 83% { opacity: 1; }
+}
+
+@keyframes run {
+  to { stroke-dashoffset: -16; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #chart .level.flash .line {
+    animation: flicker 0.6s step-end;
+  }
+}
+
+#tiles .tile {
+  cursor: pointer;
 }
 
 #chart .axis {
@@ -267,6 +314,45 @@ li strong {
 
 #chart circle {
   fill: var(--series);
+}
+
+/* Before her first attempt: one tile fills the screen down to the tab bar, the others are hidden */
+#home.empty {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+#home.empty > :not(h1, #home-empty),
+#home:not(.empty) #home-empty {
+  display: none;
+}
+
+#home-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap-l);
+}
+
+#home-empty p {
+  margin: 0;
+  max-width: 240px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+#home-empty a {
+  padding: var(--gap-m);
+  border: 0;
+  border-radius: var(--tile-radius);
+  background: var(--tile);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  box-shadow: var(--tile-shadow);
 }
 
 /* All-time record and average side by side */
@@ -370,9 +456,21 @@ li strong {
   box-shadow: none;
 }
 
-#export {
+/* the full-width buttons under the tiles: the log's Export and Delete all, a day's Delete daily attempts */
+#export,
+#delete-all,
+#clear-day {
   width: 100%;
   box-shadow: var(--tile-shadow);
+}
+
+#delete-all,
+#clear-day {
+  color: var(--danger);
+}
+
+#delete-all {
+  margin-top: var(--gap-s);
 }
 
 
@@ -558,6 +656,44 @@ li strong {
 
 #day {
   position: relative;
+}
+
+/* Swipe a row left to show its Delete button (app.js sets --dx, from 0 to minus the row's width, while
+   dragging and when it settles; past half the row it deletes). Sideways drags are the page's own; up
+   and down still scroll. */
+#day-list li[data-id] {
+  --dx: 0px;
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+#day-list li[data-id] > * {
+  transition: transform 0.2s ease-out, width 0.2s ease-out;
+}
+
+#day-list li.dragging > * {
+  transition: none;
+}
+
+#day-list li > time,
+#day-list li > strong {
+  transform: translateX(var(--dx));
+}
+
+/* off to the right of the row until it slides in, 80 px wide (app.js's OPEN); swiped further, it
+   grows to fill the space the row leaves */
+.row-delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: max(80px, -1 * var(--dx));
+  padding: 0;
+  border-radius: 0;
+  color: var(--danger);
+  background: var(--bg);
+  transform: translateX(max(0px, 80px + var(--dx)));
 }
 
 /* debug box on/off: top right, level with the heading; bright while the box is shown */
