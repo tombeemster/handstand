@@ -580,7 +580,9 @@ camera = { ...camera, ...recall(CAMERA_KEY, {}) };
 let ultraWide = null;   // device id of the back ultra wide lens, the iPhone's "0.5×"
 
 async function openCamera() {
-  const get = pick => navigator.mediaDevices.getUserMedia({ audio: false, video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 }, ...pick } });
+  const get = pick => navigator.mediaDevices.getUserMedia({ audio: false, video: { width: { ideal: 640 }, height: { ideal: 480 }, ...pick } });
+  // (Asking for frameRate: { ideal: 30 } as well was tried: on the phone more handstands went untimed
+  // that day. Not proven to be the cause, but undone; see the low frame rate warning instead.)
   if (camera.facing === 'environment' && camera.zoom === 0.5 && ultraWide) {
     try { return await get({ deviceId: { exact: ultraWide } }); } catch {}   // gone: the normal back camera
   }
@@ -681,10 +683,8 @@ async function startSession() {
 }
 
 function endSession() {
-  // Leaving mid-attempt (another tab): log it as it stands, ended now. A detected one is flagged: its
-  // landing wasn't seen.
-  if (manualStart !== null) endAttempt(manualStart, performance.now(), 'manual');
-  else if (detector.state.startTs !== null) endAttempt(detector.state.startTs, performance.now(), 'auto', true);
+  // An attempt still running is dropped, not logged. (Logging it, ended now, was tried: a detection
+  // still "up" by mistake then became a count that never happened.)
   live = false;
   manualStart = null;
   $('video').cancelVideoFrameCallback(frameReq);   // or the pending request runs as a second loop next session
