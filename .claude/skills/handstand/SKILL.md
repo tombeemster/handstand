@@ -18,7 +18,7 @@ Read `product.md` before any product decision (the job, principles, scope, decis
 ## Code map
 
 - `detect.js`: **all** detection rules, with no page and no clock. Its comments hold every threshold, why it has that value, and what was tried and dropped. Those comments are the source of truth: don't repeat the numbers elsewhere.
-- `app.js`: screens and routing (`#home`, `#record`, `#log`, `#log/<date>`), log and chart, camera, sound and speech.
+- `app.js`: screens and routing (`#home`, `#record`, `#profile`, `#profile/log`, `#profile/settings`, `#log/<date>`; no tab bar, and old `#log` links go to `#profile`); stats read `counted()`, never `attempts`, so the manual timing setting applies everywhere; log and chart, camera, sound and speech.
 - `style.css`: tokens first (`:root` holds every value; see `design.md` for their meaning).
 - `tools/replay.py` + `tools/replay.mjs`: Python finds the poses in recorded videos (cached in `tools/.cache`), Node runs them through the real `detect.js`. One copy of the rules.
 

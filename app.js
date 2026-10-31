@@ -1,4 +1,5 @@
 import { createDetector, framingHint, VIS, ANKLE_VIS, MIN_MS, MERGE_MS, MERGE_LATE_MS } from './detect.js';
+import { sessionSummary } from './summary.js';
 
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
@@ -16,19 +17,28 @@ const localIso = d => new Date(d - d.getTimezoneOffset() * 60000).toISOString().
 
 // ---- log (newest first) ----
 let attempts = recall(KEY, []);
-const best = () => Math.max(0, ...attempts.map(a => a.duration_ms));
+// Manual timing (tapped attempts) counts toward the record, average and chart only when the parent turns
+// it on (the Profile page); off by default. Manual attempts are always logged and shown, labelled.
+const MANUAL_KEY = 'handstand.countManual';
+let countManual = !!recall(MANUAL_KEY, false);
+// The attempts the stats are made of: all of them, or the automatic ones only
+const counted = () => countManual ? attempts : attempts.filter(a => a.method !== 'manual');
+const best = () => Math.max(0, ...counted().map(a => a.duration_ms));
 // The attempts that set a new all-time record when they happened (ids), and the one that holds it now
 // (current: the last of them, so the first of two equal holds), or null before any attempt
 function records() {
   const ids = new Set();
   let current = null;
-  for (const a of [...attempts].sort((p, q) => p.started_at.localeCompare(q.started_at))) {
+  for (const a of [...counted()].sort((p, q) => p.started_at.localeCompare(q.started_at))) {
     if (a.duration_ms > (current?.duration_ms ?? 0)) { current = a; ids.add(a.id); }
   }
   return { ids, current };
 }
 // The average of every attempt ever: shown in the average tile and as the chart's dashed line
-const overallAverage = () => attempts.length ? attempts.reduce((s, a) => s + a.duration_ms, 0) / attempts.length : null;
+const overallAverage = () => {
+  const list = counted();
+  return list.length ? list.reduce((s, a) => s + a.duration_ms, 0) / list.length : null;
+};
 
 // Saving redraws only the screen on view; the others are drawn when you go to them (see route).
 // Redrawing every screen on every landing cost a stutter while the camera ran, more as the log grows.
@@ -48,8 +58,9 @@ const DOT = '<span class="record-dot series-record"></span>';
 
 // One attempt as a list row: its date and time, its duration; cls: 'best' (a record), 'top' or ''.
 // rec: records(), for the dot on the current record; end: more inside the row (a day's Delete button).
+// A tapped attempt is labelled "manual".
 const row = (a, cls, rec, end = '') => `<li class="${cls}" data-id="${a.id}">
-  <time>${stamp(a)}</time><strong>${a === rec.current ? DOT : ''}${fmt(a.duration_ms)}s</strong>${end}
+  <time>${stamp(a)}${a.method === 'manual' ? ' <small>manual</small>' : ''}</time><strong>${a === rec.current ? DOT : ''}${fmt(a.duration_ms)}s</strong>${end}
 </li>`;
 
 // The log: one tile per day, newest day first, each with that day's 3 longest attempts; tapping the tile opens
@@ -68,13 +79,13 @@ function renderLog() {
     byDay.get(day).push(a);
   }
   $('days').innerHTML = [...byDay].sort(([p], [q]) => q.localeCompare(p)).map(([day, items]) => `
-    <a class="day" href="#log/${day}">
-      <div class="day-label tile-header">${dayLabel(day)}${ARROW}</div>
+    <a class="tile day" href="#log/${day}">
+      <div class="tile-label tile-header">${dayLabel(day)}${ARROW}</div>
       <ul>${longestFirst(items).slice(0, LOG_TOP).map(a => row(a, rec.ids.has(a.id) ? 'best' : '', rec)).join('')}</ul>
     </a>`).join('')
     // before her first attempt: today's tile, empty, with no arrow to a day page
-    || `<div class="day">
-      <div class="day-label tile-header">${dayLabel(localIso(new Date()).slice(0, 10))}</div>
+    || `<div class="tile day">
+      <div class="tile-label tile-header">${dayLabel(localIso(new Date()).slice(0, 10))}</div>
       <ul><li class="text-dim">No attempts yet.</li></ul>
     </div>`;
 }
@@ -96,7 +107,7 @@ $('clear-day').onclick = () => {
   if (!confirm(`Delete all ${n} attempt${n === 1 ? '' : 's'} of ${dayLabel(day)}?`)) return;
   attempts = attempts.filter(a => !a.started_at.startsWith(day));
   save();
-  location.hash = '#log';
+  location.hash = '#profile/log';
 };
 
 // On a day's page, swiping a row left shows its Delete button; tapping that deletes the attempt (false
@@ -155,33 +166,102 @@ function deleteAttempt(id) {
   save();
 }
 
-// ---- screens: #home (or none), #record, #log, one tab each. The camera is on only on #record. ----
-// #log/2026-10-23 is one day's page: part of the log, so the log tab stays highlighted there
-const SCREENS = ['home', 'record', 'log', 'day'];
-let screen = 'home', day = null;   // on view now
+// ---- screens, no tab bar: #home (or none) with the Record button; #record, closed with its cross;
+// #profile (the summary), #profile/log and #profile/settings, from the icon on home; #privacy, from
+// the share setting; #log/2026-10-23,
+// one day's page, from the log. The camera is on only on #record. ----
+const SCREENS = ['home', 'record', 'day', 'profile', 'privacy'];
+let screen = 'home', day = null, segment = 'summary';   // on view now
 
 // Draws the screen on view (the record screen draws itself, frame by frame)
 function render() {
   if (screen === 'home') renderHome();
-  if (screen === 'log') renderLog();
   if (screen === 'day') renderDay(day);
+  if (screen === 'profile') { renderProfile(); renderLog(); }
 }
 
+// Moving between screens slides: the camera up from the bottom (and back down), a deeper page in from
+// the right (home → profile → a day's page) and back out to the right. Going by depth, not by which
+// button was tapped, so the phone's own back gesture slides the right way too. Uses the browser's view
+// transitions (iPhone Safari 18+); without them, or with reduced motion, screens just switch.
+const DEPTH = { home: 0, profile: 1, day: 2, privacy: 2 };
+function slideFor(from, to) {
+  if (from === to) return null;
+  if (to === 'record') return 'up';
+  if (from === 'record') return 'down';
+  return DEPTH[to] > DEPTH[from] ? 'in' : 'out';
+}
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
+let routed = false;   // the first screen, on opening the app, doesn't slide in
+
 function route() {
-  const [name, date] = location.hash.slice(1).split('/');
-  screen = name === 'log' && date ? 'day' : SCREENS.includes(name) ? name : 'home';
-  day = date ?? null;
-  for (const s of SCREENS) $(s).hidden = s !== screen;
-  render();
-  const tab = screen === 'day' ? 'log' : screen;
-  for (const a of $('tabs').querySelectorAll('a')) {
-    if (a.hash === '#' + tab) a.setAttribute('aria-current', 'page');
-    else a.removeAttribute('aria-current');
-  }
+  const [name, part] = location.hash.slice(1).split('/');
+  if (name === 'log' && !part) return location.replace('#profile/log');   // the log's old address: now on the profile
+  const from = screen;
+  screen = name === 'log' ? 'day' : SCREENS.includes(name) ? name : 'home';
+  day = name === 'log' ? part : null;
+  segment = ['log', 'settings'].includes(part) ? part : 'summary';
+  const show = () => {
+    for (const s of SCREENS) $(s).hidden = s !== screen;
+    const links = [...document.querySelectorAll('.segments a')];
+    for (const a of links) {
+      const on = a.dataset.segment === segment;
+      $('segment-' + a.dataset.segment).hidden = !on;
+      if (on) a.setAttribute('aria-current', 'page');
+      else a.removeAttribute('aria-current');
+    }
+    // the segments' highlight slides under the one on view (style.css)
+    document.querySelector('.segments').style.setProperty('--at', links.findIndex(a => a.dataset.segment === segment));
+    render();
+  };
+  const slide = routed && slideFor(from, screen);
+  routed = true;
+  if (slide && document.startViewTransition && !calm.matches) {
+    document.documentElement.dataset.slide = slide;
+    document.startViewTransition(show);
+  } else show();
   if (screen === 'record' && !live) startSession();
   if (screen !== 'record' && live) endSession();
 }
 addEventListener('hashchange', route);
+
+// ---- profile ----
+// The summary: every attempt logged, then the record and average as home shows them (so following
+// the manual timing setting)
+function renderProfile() {
+  const manual = attempts.filter(a => a.method === 'manual').length;
+  const pb = best(), avg = overallAverage();
+  $('summary').innerHTML = [
+    ['Attempts', attempts.length + (manual ? ` (${manual} manual)` : '')],
+    ['Record', pb ? fmt(pb) + 's' : '–'],
+    ['Average', avg ? fmt(avg) + 's' : '–'],
+  ].map(([label, value]) => `<li><span>${label}</span><strong>${value}</strong></li>`).join('');
+  $('count-manual').checked = countManual;
+  $('share-summaries').checked = shareSummaries;
+  // "What gets sent": the last session's summary, exactly as it would be sent; before any, today's
+  // attempts as an example. Only where the page has it (it's out of the settings for now).
+  if (!$('sent-json')) return;
+  const shown = lastSummary ?? sessionSummary({ log: attempts, from: localIso(new Date()).slice(0, 10), misses: 0, fails: 0, countManual });
+  $('sent-label').textContent = lastSummary ? 'The last session, as sent:'
+    : shown ? "Nothing sent yet. An example, from today's attempts:" : 'Nothing sent yet. After a session, its summary shows here.';
+  $('sent-json').textContent = shown ? JSON.stringify(shown, null, 2) : '';
+  $('sent-json').hidden = !shown;
+}
+$('count-manual').onchange = e => {
+  countManual = e.target.checked;
+  remember(MANUAL_KEY, countManual);
+  renderProfile();   // the summary follows it; the other screens redraw when visited
+};
+
+// Analytics: sharing anonymous session totals, off by default. The summary of each session is made
+// when it ends (see endSession); sending it is not built yet (no Worker yet), so nothing leaves the phone.
+const SHARE_KEY = 'handstand.shareSummaries';
+let shareSummaries = !!recall(SHARE_KEY, false);
+let session = null, lastSummary = null;   // the session under way: { from, misses, fails }; the last one's summary
+$('share-summaries').onchange = e => {
+  shareSummaries = e.target.checked;
+  remember(SHARE_KEY, shareSummaries);
+};
 
 // ---- home ----
 function renderHome() {
@@ -209,7 +289,7 @@ function renderHome() {
 function chartDays() {
   const dayKey = d => localIso(d).slice(0, 10);
   const tops = new Map();   // each day's longest attempt (the first of equals)
-  for (const a of attempts) {
+  for (const a of counted()) {
     const day = a.started_at.slice(0, 10);
     if (!(tops.get(day)?.duration_ms >= a.duration_ms)) tops.set(day, a);
   }
@@ -289,8 +369,8 @@ $('tiles').onclick = e => {
   g.classList.add('flash');
 };
 
-// A tap on a tab is the moment iOS allows sound to be switched on for later
-$('tabs').onclick = unlockAudio;
+// The tap on Record is the moment iOS allows sound to be switched on for later
+$('to-record').onclick = unlockAudio;
 
 $('export').onclick = () => {
   const csv = ['id,started_at,duration_ms,method,flagged',
@@ -457,7 +537,8 @@ let manualStart = null;   // a tapped attempt in progress (performance.now() at 
 function endAttempt(startTs, endTs, method, flagged = false, wait = 0) {
   const duration_ms = Math.round(endTs - startTs);
   if (duration_ms < MIN_MS) return duration_ms;
-  const pb = best(), record = pb > 0 && duration_ms > pb;
+  // a record only if this attempt counts (see countManual)
+  const pb = best(), record = (method === 'auto' || countManual) && pb > 0 && duration_ms > pb;
   const id = Math.random().toString(36).slice(2, 8);
   lastId = method === 'auto' ? id : null;   // only a detected attempt can be resumed by detection
   attempts.unshift({
@@ -502,10 +583,14 @@ const detector = createDetector({
     // announced once the attempt can no longer resume (see MERGE_LATE_MS), so a short loss of
     // tracking isn't announced as a landing
     const ms = endAttempt(startTs, endTs, 'auto', flagged, MERGE_LATE_MS);
-    if (ms < MIN_MS) noteMiss(startTs, `timed ${fmt(ms)} s, under 1 s`);
+    if (ms < MIN_MS) {
+      noteMiss(startTs, `timed ${fmt(ms)} s, under 1 s`);
+      if (session) session.fails++;
+    }
     $('timer').textContent = fmt(ms);
   },
   onMiss(ts, why) {
+    if (manualStart === null && session) session.misses++;
     if (manualStart === null) noteMiss(ts, why);
   },
 });
@@ -773,6 +858,7 @@ $('zoom').onclick = e => {
 // ---- session: from entering the record screen until leaving it ----
 async function startSession() {
   live = true;
+  session = { from: localIso(new Date()), misses: 0, fails: 0 };
   manualStart = null;
   detector.reset();
   resetPace();
@@ -803,6 +889,8 @@ function endSession() {
   // still "up" by mistake then became a count that never happened.)
   live = false;
   manualStart = null;
+  if (session) lastSummary = sessionSummary({ log: attempts, ...session, countManual }) ?? lastSummary;
+  session = null;
   $('video').cancelVideoFrameCallback(frameReq);   // or the pending request runs as a second loop next session
   detector.reset();
   lastId = null;

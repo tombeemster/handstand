@@ -14,24 +14,27 @@
 <body>
 
 <section id="home">
+  <!-- to the Profile page, top right. Icon: Lucide user -->
+  <a id="to-profile" href="#profile" aria-label="Profile and settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
   <h1>Handstand</h1>
-  <!-- before her first attempt: this tile alone, in place of the others -->
+  <!-- before her first attempt: this tile alone, in place of the others (the Record button starts) -->
   <div id="home-empty">
     <p>You haven't logged your first handstand yet.</p>
-    <a class="button" href="#record">Start recording</a>
   </div>
   <div id="tiles">
     <!-- a tap lights up the tile's line in the chart (data-line) -->
-    <div class="tile series-record" data-line="series-record">Record <b id="best">–</b></div>
-    <div class="tile series-avg" data-line="series-avg">Average <b id="average">–</b></div>
+    <div class="tile stat series-record" data-line="series-record">Record <b id="best">–</b></div>
+    <div class="tile stat series-avg" data-line="series-avg">Average <b id="average">–</b></div>
   </div>
-  <figure id="chart"></figure>
+  <figure id="chart" class="tile"></figure>
   <!-- the chart's seven days as a list, today on top. Arrow icon: Lucide arrow-right -->
-  <div class="day">
-    <div class="day-label">Daily Highs</div>
+  <div class="tile">
+    <div class="tile-label">Daily Highs</div>
     <ul id="highs"></ul>
-    <a class="day-footer" href="#log">All attempts <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+    <a class="tile-footer" href="#profile/log">All attempts <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
   </div>
+  <!-- the way to the record screen: a camera-style REC button fixed at the bottom of home (drawn in CSS) -->
+  <a id="to-record" href="#record" aria-label="Record"></a>
 </section>
 
 <section id="record" hidden>
@@ -39,16 +42,28 @@
     <video id="video" playsinline muted></video>
     <canvas id="overlay"></canvas>
   </div>
-  <h1>Handstand</h1>
+  <h1>Record</h1>
+  <!-- back to home, top right. Icon: Lucide x -->
+  <a id="close-record" href="#home" aria-label="Close the camera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></a>
   <div id="status"></div>
-  <!-- debug box on/off, top right. Icon: Lucide scan-box -->
+  <!-- debug box on/off, top left. Icon: Lucide scan-box -->
   <button id="debug-toggle" aria-label="Debug info" aria-pressed="false">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12v5.5"/><path d="M17 3h2a2 2 0 012 2v2"/><path d="M21 17v2a2 2 0 01-2 2h-2"/><path d="M3 7V5a2 2 0 012-2h2"/><path d="M7 21H5a2 2 0 01-2-2v-2"/><path d="M7.264 9.252 12 12l4.737-2.748"/><path d="M7.995 8.514A2 2 0 007 10.244v3.516a2 2 0 00.996 1.73l3 1.74a2 2 0 002.008 0l3-1.74A2 2 0 0017 13.76v-3.517a2 2 0 00-.995-1.73l-3-1.742a2 2 0 00-1.892-.064z"/></svg>
   </button>
   <pre id="debug" hidden></pre>
   <div id="notice" hidden></div>
   <div id="controls">
-    <div id="timer" role="button" aria-label="Timer: tap to start or stop timing by hand">0.00</div>
+    <!-- the timer, with sound on/off and the front/back switch either side of it. Icons: Lucide volume-2, volume-x, switch-camera -->
+    <div id="timer-row">
+      <button id="mute" class="timer-button" aria-label="Sound" aria-pressed="false">
+        <svg class="sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/></svg>
+        <svg class="sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>
+      </button>
+      <div id="timer" role="button" aria-label="Timer: tap to start or stop timing by hand">0.00</div>
+      <button id="flip" class="timer-button" aria-label="Switch between front and back camera" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
+      </button>
+    </div>
     <!-- lens choice, back camera only -->
     <nav>
       <div id="zoom" hidden>
@@ -57,52 +72,81 @@
       </div>
     </nav>
   </div>
-  <!-- sound on/off and front/back switch, either side of the tab bar. Icons: Lucide volume-2, volume-x, switch-camera -->
-  <button id="mute" class="beside-tabs" aria-label="Sound" aria-pressed="false">
-    <svg class="sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/></svg>
-    <svg class="sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>
-  </button>
-  <button id="flip" class="beside-tabs" aria-label="Switch between front and back camera" hidden>
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
-  </button>
-</section>
-
-<section id="log" hidden>
-  <h1>Handstand</h1>
-  <div id="days"></div>
-  <button id="export">Export log (.csv)</button>
-  <button id="delete-all">Reset log</button>
 </section>
 
 <!-- one day of the log, all attempts in time order (#log/2026-10-23). Back icon: Lucide arrow-left -->
 <section id="day" hidden>
-  <a class="back" href="#log" aria-label="Back to all days"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></a>
-  <h1>Handstand</h1>
-  <div class="day">
-    <div class="day-label tile-header" id="day-title"></div>
+  <a class="back" href="#profile/log" aria-label="Back to all days"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></a>
+  <h1>&nbsp;</h1>
+  <div class="tile day">
+    <div class="tile-label tile-header" id="day-title"></div>
     <ul id="day-list"></ul>
   </div>
   <button id="clear-day">Delete attempts</button>
 </section>
 
-<!-- Tab bar, on every screen: home, record, log. Icons: Lucide (home: user, chart-no-axes-combined or trending-up; video, logs), ISC licence, lucide.dev -->
-<nav id="tabs">
-  <a href="#home" aria-label="Home">
-    <!-- choosing the home icon: keep one of these three -->
-    <!-- user -->
-    <!-- <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> -->
-    <!-- chart-no-axes-combined -->
-    <!-- <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16v5"/><path d="M16 14v7"/><path d="M20 10v11"/><path d="m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15"/><path d="M4 18v3"/><path d="M8 14v7"/></svg> -->
-    <!-- trending-up -->
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></svg>
-  </a>
-  <a href="#record" aria-label="Record">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
-  </a>
-  <a href="#log" aria-label="All attempts">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h1"/><path d="M3 12h1"/><path d="M3 19h1"/><path d="M8 5h1"/><path d="M8 12h1"/><path d="M8 19h1"/><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/></svg>
-  </a>
-</nav>
+<!-- the Profile page, opened from the icon on home: the summary (#profile), the log (#profile/log) and
+     the settings (#profile/settings), one segment each. Back icon: Lucide arrow-left -->
+<section id="profile" hidden>
+  <a class="back" href="#home" aria-label="Back to home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></a>
+  <h1>Profile</h1>
+  <nav class="segments" aria-label="Profile">
+    <span class="thumb" aria-hidden="true"></span>
+    <a href="#profile" data-segment="summary">Summary</a>
+    <a href="#profile/log" data-segment="log">Log</a>
+    <a href="#profile/settings" data-segment="settings">Settings</a>
+  </nav>
+  <div id="segment-summary">
+    <div class="tile">
+      <div class="tile-label tile-header">Summary</div>
+      <ul id="summary"></ul>
+    </div>
+  </div>
+  <div id="segment-log">
+    <div id="days"></div>
+    <button id="export">Export log (.csv)</button>
+    <button id="delete-all">Reset log</button>
+  </div>
+  <div id="segment-settings">
+  <!-- a setting: its name and switch on top, what it does underneath -->
+  <div class="tile setting">
+    <label class="tile-label tile-header">Manual timing <input type="checkbox" role="switch" class="switch" id="count-manual"></label>
+    <p class="setting-note">Count manual timing in averages and records</p>
+  </div>
+  <div class="tile setting">
+    <label class="tile-label tile-header">Share anonymous totals <input type="checkbox" role="switch" class="switch" id="share-summaries"></label>
+    <p class="setting-note">
+      Shares anonymous totals of each session. Only counts and times, no names or ids.
+      <a href="#privacy">Privacy statement</a>
+    </p>
+  </div>
+  </div>
+</section>
+
+
+<!-- the privacy statement (#privacy), linked from the share setting. Back icon: Lucide arrow-left.
+     Keep it in step with what the app does: summary.js builds exactly what is sent. -->
+<section id="privacy" hidden>
+  <a class="back" href="#profile/settings" aria-label="Back to settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></a>
+  <h1>Privacy</h1>
+  <article class="prose">
+    <h2>The camera</h2>
+    <p>The camera picture is analysed on this phone, while you record. No video or photo is ever recorded, stored or sent anywhere.</p>
+    <h2>Your attempts</h2>
+    <p>Every attempt, its time and duration is stored on this phone only, in the browser. Clearing the browser's data, or Reset log, removes them. Export log is your only copy.</p>
+    <h2>Sharing anonymous totals</h2>
+    <p>Off unless you turn it on. When on, the app sends one summary at the end of each session: the date, how many attempts were timed automatically or by hand, near misses, attempts under 1 second, and that session's average, best and all-time record in milliseconds, plus the app version.</p>
+    <p>It contains no name, no account, no device or session id, and no time of day. The summaries can't be linked to you, to your phone or to each other, which also means we can't find or delete a single one on request.</p>
+    <h2>Where it goes</h2>
+    <p>The summary goes to a Cloudflare Worker (Cloudflare, Inc.), which stores it with Supabase (Supabase, Inc.) in Frankfurt, Germany. As with any web request, Cloudflare receives your connection's IP address to deliver it; the Worker does not record it. Summaries are kept for [retention period] and then deleted.</p>
+    <h2>No tracking</h2>
+    <p>No cookies, no analytics or advertising tools, no fingerprinting.</p>
+    <h2>Filming</h2>
+    <p>Only film your own child, and only with her agreement.</p>
+    <h2>Questions</h2>
+    <p>[contact]</p>
+  </article>
+</section>
 
 <script type="module" src="app.js"></script>
 </body>
