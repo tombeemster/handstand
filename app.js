@@ -52,15 +52,15 @@ const row = (a, cls, rec, end = '') => `<li class="${cls}" data-id="${a.id}">
   <time>${stamp(a)}</time><strong>${a === rec.current ? DOT : ''}${fmt(a.duration_ms)}s</strong>${end}
 </li>`;
 
-// The log: one tile per day, newest day first, each with that day's 3 longest attempts and an arrow to
-// the day's own page with all of them. Attempts that set a record at the time are marked "best".
+// The log: one tile per day, newest day first, each with that day's 3 longest attempts; tapping the tile opens
+// the day's own page with all of them (the arrow shows it). Attempts that set a record at the time are marked "best".
 // (A grid of small day tiles, two per row with month headings, was tried and dropped: less readable.)
 const LOG_TOP = 3;
 const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';   // Lucide arrow-right
 const longestFirst = items => [...items].sort((p, q) => q.duration_ms - p.duration_ms);
 
 function renderLog() {
-  $('delete-all').hidden = !attempts.length;
+  $('export').hidden = $('delete-all').hidden = !attempts.length;   // nothing to export or delete yet
   const rec = records(), byDay = new Map();
   for (const a of attempts) {
     const day = a.started_at.slice(0, 10);
@@ -68,14 +68,14 @@ function renderLog() {
     byDay.get(day).push(a);
   }
   $('days').innerHTML = [...byDay].sort(([p], [q]) => q.localeCompare(p)).map(([day, items]) => `
-    <div class="day">
-      <div class="day-label tile-header">${dayLabel(day)}<a href="#log/${day}" aria-label="All attempts of ${dayLabel(day)}">${ARROW}</a></div>
+    <a class="day" href="#log/${day}">
+      <div class="day-label tile-header">${dayLabel(day)}${ARROW}</div>
       <ul>${longestFirst(items).slice(0, LOG_TOP).map(a => row(a, rec.ids.has(a.id) ? 'best' : '', rec)).join('')}</ul>
-    </div>`).join('')
+    </a>`).join('')
     // before her first attempt: today's tile, empty, with no arrow to a day page
     || `<div class="day">
       <div class="day-label tile-header">${dayLabel(localIso(new Date()).slice(0, 10))}</div>
-      <ul><li>No attempts yet.</li></ul>
+      <ul><li class="text-dim">No attempts yet.</li></ul>
     </div>`;
 }
 

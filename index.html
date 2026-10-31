@@ -85,10 +85,16 @@
   <button id="clear-day">Delete attempts</button>
 </section>
 
-<!-- Tab bar, on every screen: home, record, log. Icons: Lucide (user, video, logs), ISC licence, lucide.dev -->
+<!-- Tab bar, on every screen: home, record, log. Icons: Lucide (home: user, chart-no-axes-combined or trending-up; video, logs), ISC licence, lucide.dev -->
 <nav id="tabs">
   <a href="#home" aria-label="Home">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <!-- choosing the home icon: keep one of these three -->
+    <!-- user -->
+    <!-- <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> -->
+    <!-- chart-no-axes-combined -->
+    <!-- <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16v5"/><path d="M16 14v7"/><path d="M20 10v11"/><path d="m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15"/><path d="M4 18v3"/><path d="M8 14v7"/></svg> -->
+    <!-- trending-up -->
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 7h6v6"/><path d="m22 7-8.5 8.5-5-5L2 17"/></svg>
   </a>
   <a href="#record" aria-label="Record">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>

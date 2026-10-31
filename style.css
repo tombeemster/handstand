@@ -17,6 +17,7 @@
   /* colours */
   --bg: #11131a;
   --tile: #181a24;
+  --tile-alt: color-mix(in srgb, var(--tile), #c4c4c4 5%);
   --text: #f2f3f7;
   --text-invert: var(--bg);
   --dim: #8b90a3;
@@ -52,7 +53,7 @@
 
   --tile-radius: var(--radius-l);
   --tile-edge: rgba(0, 0, 0, 0.1);
-  --tile-edge-light: rgba(196, 196, 196, 0.1);
+  --tile-edge-light: #c4c4c41a;
   --tile-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px var(--tile-edge), inset 0 -1px 0 0 var(--tile-edge), inset 0 0 0 1px var(--tile-edge-light);
 }
 
@@ -136,13 +137,6 @@ li.best time, li.best strong {
   color: var(--gold);
 }
 
-/* the day's highest attempt on a day's page, when it isn't a record: a white outline to spot it
-   while scrolling (drawn inside the row, so the rows don't shift) */
-li.top {
-  outline: 1px solid var(--text);
-  outline-offset: -1px;
-}
-
 li time {
   flex: 1;
   color: var(--dim);
@@ -155,6 +149,10 @@ li small {
 li strong {
   font-variant-numeric: tabular-nums;
   font-weight: 400;
+}
+
+.text-dim {
+  color: var(--dim);
 }
 
 
@@ -407,6 +405,11 @@ li strong {
   box-shadow: var(--tile-shadow);
 }
 
+/* on the log, the whole day tile is the link to the day's page */
+a.day {
+  display: block;
+}
+
 /* same lettering as the tiles' "Record" and "Average" */
 .day-label {
   padding: var(--gap-m) var(--gap-m);
@@ -414,18 +417,12 @@ li strong {
   text-align: center;
 }
 
-/* a tile title on the left with a link on the right: the log's day tiles */
+/* a tile title on the left, an arrow on the right: the log's day tiles */
 .tile-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   text-align: left;
-}
-
-.tile-header a {
-  display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
 /* the home screen's "All attempts" link: the last row of the Daily highs tile, centred */
