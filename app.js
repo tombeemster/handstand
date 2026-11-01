@@ -34,7 +34,7 @@ function records() {
   }
   return { ids, current };
 }
-// The average of every attempt ever: shown in the average tile and as the chart's dashed line
+// The average of every attempt ever: shown in the average tile and as a line across the chart
 const overallAverage = () => {
   const list = counted();
   return list.length ? list.reduce((s, a) => s + a.duration_ms, 0) / list.length : null;
@@ -60,7 +60,7 @@ const DOT = '<span class="record-dot series-record"></span>';
 // rec: records(), for the dot on the current record; end: more inside the row (a day's Delete button).
 // A tapped attempt is labelled "manual".
 const row = (a, cls, rec, end = '') => `<li class="${cls}" data-id="${a.id}">
-  <time>${stamp(a)}${a.method === 'manual' ? ' <small>manual</small>' : ''}</time><strong>${a === rec.current ? DOT : ''}${fmt(a.duration_ms)}s</strong>${end}
+  <time>${stamp(a)}</time>${a.method === 'manual' ? '<small>manual</small>' : ''}<strong>${a === rec.current ? DOT : ''}${fmt(a.duration_ms)}s</strong>${end}
 </li>`;
 
 // The log: one tile per day, newest day first, each with that day's 3 longest attempts; tapping the tile opens
@@ -167,17 +167,18 @@ function deleteAttempt(id) {
 }
 
 // ---- screens, no tab bar: #home (or none) with the Record button; #record, closed with its cross;
-// #profile (the summary), #profile/log and #profile/settings, from the icon on home; #privacy, from
+// #profile (the attempts, also #profile/log) and #profile/settings, from the icon on home; #privacy, from
 // the share setting; #log/2026-10-23,
 // one day's page, from the log. The camera is on only on #record. ----
 const SCREENS = ['home', 'record', 'day', 'profile', 'privacy'];
-let screen = 'home', day = null, segment = 'summary';   // on view now
+let screen = 'home', day = null, segment = 'log';   // on view now
 
 // Draws the screen on view (the record screen draws itself, frame by frame)
 function render() {
   if (screen === 'home') renderHome();
   if (screen === 'day') renderDay(day);
   if (screen === 'profile') { renderProfile(); renderLog(); }
+  if (screen === 'privacy') renderPrivacy();
 }
 
 // Moving between screens slides: the camera up from the bottom (and back down), a deeper page in from
@@ -200,7 +201,7 @@ function route() {
   const from = screen;
   screen = name === 'log' ? 'day' : SCREENS.includes(name) ? name : 'home';
   day = name === 'log' ? part : null;
-  segment = ['log', 'settings'].includes(part) ? part : 'summary';
+  segment = part === 'settings' ? 'settings' : 'log';
   const show = () => {
     for (const s of SCREENS) $(s).hidden = s !== screen;
     const links = [...document.querySelectorAll('.segments a')];
@@ -229,6 +230,8 @@ addEventListener('hashchange', route);
 // The summary: every attempt logged, then the record and average as home shows them (so following
 // the manual timing setting)
 function renderProfile() {
+  $('athlete-name').value = athleteName;
+  $('profile-title').textContent = athleteName || 'Profile';
   const manual = attempts.filter(a => a.method === 'manual').length;
   const pb = best(), avg = overallAverage();
   $('summary').innerHTML = [
@@ -238,15 +241,27 @@ function renderProfile() {
   ].map(([label, value]) => `<li><span>${label}</span><strong>${value}</strong></li>`).join('');
   $('count-manual').checked = countManual;
   $('share-summaries').checked = shareSummaries;
-  // "What gets sent": the last session's summary, exactly as it would be sent; before any, today's
-  // attempts as an example. Only where the page has it (it's out of the settings for now).
-  if (!$('sent-json')) return;
+}
+
+// The privacy statement's "What gets sent": the last session's summary, exactly as it would be sent;
+// before any, today's attempts as an example
+function renderPrivacy() {
   const shown = lastSummary ?? sessionSummary({ log: attempts, from: localIso(new Date()).slice(0, 10), misses: 0, fails: 0, countManual });
-  $('sent-label').textContent = lastSummary ? 'The last session, as sent:'
-    : shown ? "Nothing sent yet. An example, from today's attempts:" : 'Nothing sent yet. After a session, its summary shows here.';
+  $('sent-label').textContent = lastSummary ? "Your last session's summary:"
+    : shown ? "An example, from today's attempts:" : 'After a session, its summary shows here.';
   $('sent-json').textContent = shown ? JSON.stringify(shown, null, 2) : '';
   $('sent-json').hidden = !shown;
 }
+// Her name on the profile, typed into the summary tile's header; kept on this phone, never sent
+const NAME_KEY = 'handstand.name';
+let athleteName = recall(NAME_KEY, '');
+$('athlete-name').oninput = e => {
+  athleteName = e.target.value.trim();
+  remember(NAME_KEY, athleteName);
+  $('profile-title').textContent = athleteName || 'Profile';   // the page's title is her name, once she has one
+};
+$('athlete-name').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); };   // done: close the keyboard
+
 $('count-manual').onchange = e => {
   countManual = e.target.checked;
   remember(MANUAL_KEY, countManual);
@@ -274,9 +289,10 @@ function renderHome() {
   $('average').textContent = avg ? fmt(avg) + ' s' : '–';
   const days = chartDays();
   renderChart(days);
-  // the chart's last 7 days as a list, today on top: each day's own best, or a dash if she didn't practise
+  // the chart's last 7 days as a list, today on top: each day's own best, or nothing if she didn't practise
+  // (showing the carried-over best there, in dim, was tried: it read as a time logged that day)
   $('highs').innerHTML = days.slice(-7).reverse().map(d => `<li class="${d.record ? 'best' : ''}">
-    <time>${d.date.toLocaleDateString(undefined, { weekday: 'long' })}${d.at ? ` - ${d.at}` : ''}</time><strong>${d.record ? DOT : ''}${d.own ? fmt(d.own) + 's' : '–'}</strong>
+    <time>${d.date.toLocaleDateString(undefined, { weekday: 'long' })}${d.at ? ` - ${d.at}` : ''}</time><strong>${d.record ? DOT : ''}${d.own ? fmt(d.own) + 's' : ''}</strong>
   </li>`).join('');
 }
 
@@ -313,7 +329,7 @@ function chartDays() {
 //   marks the day her current record was set, where the line meets the record line. (Days without
 //   attempts after it carry that value, so the line can run along the record line until she practises
 //   again: kept on purpose over ending the line at the last practice day.)
-// - average of all her attempts ever (the Average tile) and the all-time record: dashed horizontal lines.
+// - average of all her attempts ever (the Average tile) and the all-time record: solid horizontal lines.
 //   (A line through each day's average was tried: it barely moves, the overall value says as much.)
 function renderChart(chart) {
   const days = chart.map(d => d.date), bests = chart.map(d => d.high), recordAt = chart.map(d => d.record);
@@ -331,18 +347,26 @@ function renderChart(chart) {
   const dayW = (W - L) / 7, plotW = days.length * dayW;
   const x = i => (i + 0.5) * dayW, y = v => T + (1 - v / top) * (H - T - B);
 
-  // the daily bests as a straight line from day to day, the area under it fading out downwards
+  // the daily bests as a straight line from day to day, the area under it fading out downwards. A stretch
+  // into a day she didn't practise only carries the last best on: drawn dashed, so it doesn't read as a time.
   const pts = bests.map((v, i) => v === null ? null : [x(i), y(v)]).filter(Boolean);   // nulls only lead
   let dailyLine = '';
   if (pts.length > 1) {
     const line = 'M' + pts.map(([px, py]) => `${px},${py}`).join(' L');
+    let practised = '', carried = '';
+    for (let i = 1; i < bests.length; i++) {
+      if (bests[i - 1] === null) continue;
+      const step = `M${x(i - 1)},${y(bests[i - 1])} L${x(i)},${y(bests[i])} `;
+      if (chart[i].own) practised += step; else carried += step;
+    }
     dailyLine += `<linearGradient id="best-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="fill-top"/><stop offset="1" class="fill-bottom"/></linearGradient>
       <path class="area" fill="url(#best-fill)" d="${line} L${pts.at(-1)[0]},${y(0)} L${pts[0][0]},${y(0)} Z"/>
-      <path class="line" d="${line}"/>`;
+      <path class="line" d="${practised}"/>
+      <path class="line carried" d="${carried}"/>`;
   }
   const dots = bests.map((v, i) => recordAt[i] ? `<circle cx="${x(i)}" cy="${y(v)}" r="3.75"/>` : '').join('');   // 7.5 units across, about 7.5 px
   // class level: what a tap on the matching home tile lights up (see the tiles' onclick)
-  const level = (value, cls) => value ? `<g class="${cls} level"><line class="line dashed" x1="0" y1="${y(value)}" x2="${plotW}" y2="${y(value)}"/></g>` : '';
+  const level = (value, cls) => value ? `<g class="${cls} level"><line class="line" x1="0" y1="${y(value)}" x2="${plotW}" y2="${y(value)}"/></g>` : '';
 
   const labels = days.map((d, i) => `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${d.toLocaleDateString(undefined, { weekday: 'narrow' })}</text>`).join('');
   $('chart').innerHTML = `<svg class="seconds" viewBox="0 0 ${L} ${H}" aria-hidden="true">

@@ -19,8 +19,8 @@ Dark, calm and restrained: a few tiles on a near-black page, no decoration. The 
 
 ## Chart
 
-- **Solid line with a fading area:** each day's high, 7 days on screen with today on the right; swipe for the weeks back to her first attempt. A day without attempts carries the previous value flat.
-- **Dashed lines:** all-time values, the record (gold) and the average (white at 0.6 opacity, quieter than the record). Tapping the Record or Average tile makes its line flicker 3 times while its dashes run, to show which line is which.
+- **Solid line with a fading area:** each day's high, 7 days on screen with today on the right; swipe for the weeks back to her first attempt. A day without attempts carries the previous value flat, dashed, so it doesn't read as a time of that day; its row in Daily Highs stays empty.
+- **Straight across:** all-time values, both solid: the record in gold, the average in white at half opacity, quieter than the record. Tapping the Record or Average tile makes its line flicker 3 times, to show which line is which.
 - **One record dot, at most:** on the day the current record was set, where the daily line meets the record line. The same dot marks the current record in every list.
 - **Y axis:** whole even seconds, at most 8 faint gridlines.
 
@@ -28,14 +28,18 @@ Dark, calm and restrained: a few tiles on a near-black page, no decoration. The 
 
 - **Vend Sans.** Headings small, uppercase and letter-spaced; times in tabular figures so digits don't jump.
 - **Tiles:** every box is a `.tile` (background, radius, shadow, 8 px apart); an extra class says what kind: `stat` (Record, Average), `day` (a day's attempts), `setting` (a name, a switch, a description). The chart is a tile too. Lists live inside their tile, never on the page background.
-- **No tab bar.** Home has one Record button fixed at the bottom, drawn like a camera's REC button (a red domed button in a dark recessed housing, the one skeuomorphic element) and a profile icon top right. Record closes with a cross top right. Profile has three segments: Summary, Log (one tile per day with its 3 longest attempts) and Settings. A day's page lists all of a day's attempts, longest first. (A tab bar for Home, Record and Log was used until 31 October; a grid of small day tiles was tried and dropped.)
-- **Record screen:** the camera fills the whole screen. Text on the camera sits on a dark see-through backing; the timer is big and centred; the debug toggle is top left, the cross top right; mute and camera flip sit in the left and right corners, level with the timer; the lens choice is under it.
+- **No tab bar.** Home has one Record button fixed at the bottom, drawn like a camera's REC button (a red domed button in a dark recessed housing, the one skeuomorphic element) and a profile icon top right. Record closes with a cross top right. Profile is titled with her name once set, and has two segments: Attempts (one tile per day with its 3 longest attempts) and Settings (the summary with her editable name on top, then the settings). A day's page lists all of a day's attempts, longest first. (A tab bar for Home, Record and Log was used until 31 October; a grid of small day tiles was tried and dropped.)
+- **Record screen:** the camera fills the whole screen. Text on the camera sits on a dark see-through backing; the timer is big and centred; the debug toggle is top left, the cross top right; mute and camera flip sit in the bottom corners, mirroring the icons at the top; the lens choice is under the timer.
 
 ## Motion
 
 - **Screens slide, by depth:** the camera rises from the bottom and drops back down; a deeper page (home → profile → a day's page) slides in from the right and back out to the right. 0.3 s, no fades.
 - **Segments:** the highlight slides to the segment tapped.
 - **Reduced motion:** nothing slides.
+
+## Top bar
+
+Every screen starts with the same top bar (`.topbar`, 64 px): an icon button on the left (back, or the debug toggle on the camera), the title centred, an icon button on the right (the profile on home, the cross on the camera). Each side is optional; everything is centred vertically and a long title is cut off.
 
 ## Icons
 

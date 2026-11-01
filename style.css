@@ -42,15 +42,18 @@
   --radius-l: 8px;
 
   /* iPhone notch and home bar */
-  --safe-top: env(safe-area-inset-top);
+  --safe-top: calc(env(safe-area-inset-top) + var(--gap-s));
   --safe-bottom: env(safe-area-inset-bottom);
 
   /* the Record button floating at the bottom of home, and all the space it takes there: the button,
      the gap under it and the iPhone home bar below that */
-  --record-button: 64px;
-  --bottom-space: calc(var(--record-button) + var(--gap-m) + var(--safe-bottom));
-  --icon-button: 56px;     /* the round icon buttons on the camera view */
+  --record-button: 72px;
+  --bottom-space: calc(var(--record-button) * 0.5);
 
+  --row: 48px;             /* the height of everything row-shaped: list rows, tile headers, the segments,
+                              the full-width buttons; whatever is in them */
+  --topbar: 64px;          /* the top bar on every screen: an icon button, the title, an icon button */
+  --tap: 48px;             /* an icon button's tap area, whatever the icon's size */
   --tile-radius: var(--radius-l);
   --tile-edge: rgba(0, 0, 0, 0.1);
   --tile-edge-light: #c4c4c41a;
@@ -83,8 +86,8 @@ a {
 
 h1 {
   margin: 0;
-  padding: var(--gap-m) 0;
-  font-size: 1rem;
+  padding: 0;
+  font-size: 0.9rem;
   font-weight: 500;
   text-align: center;
   text-transform: uppercase;
@@ -102,6 +105,61 @@ ul {
 
 [hidden] {
   display: none !important;
+}
+
+
+/* Top bar: the same on every screen. A fixed height, three columns: an icon button on the left (back,
+   or the debug toggle), the title in the middle, an icon button on the right (the profile, or closing
+   the camera); each optional. Everything centred vertically; a long title is cut off with an ellipsis. */
+.topbar {
+  display: grid;
+  grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
+  align-items: center;
+  height: var(--topbar);
+}
+
+.topbar > * {
+  grid-row: 1;
+}
+
+.topbar > .icon-button:first-child {
+  grid-column: 1;
+}
+
+.topbar h1 {
+  grid-column: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar h1 ~ .icon-button {
+  grid-column: 3;
+}
+
+/* An icon button: a 48 x 48 tap area with the icon centred in it (20 px; 24 on the camera view) */
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--dim);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.icon-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 
@@ -125,9 +183,10 @@ button {
 /* An attempt: time of day on the left, duration on the right */
 li {
   display: flex;
-  align-items: center;
+  align-items: center;      /* its contents centred in the row's fixed height */
   gap: var(--gap-s);
-  padding: var(--gap-m);
+  min-height: var(--row);   /* not padding: a badge or dot can't make one row taller than the rest */
+  padding: 0 var(--gap-m);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -140,11 +199,24 @@ li.best time, li.best strong {
 li time {
   flex: 1;
   color: var(--dim);
+  font-variant-numeric: tabular-nums;   /* every time the same width, so what follows lines up */
 }
 
-/* the "manual" label on a tapped attempt */
+/* the "manual" badge on a tapped attempt: right after the time (the row's gap-s apart), the duration
+   still on the right (the badge takes the free space after it instead of the time) */
 li small {
+  margin-right: auto;
+  padding: 1px 4px;
+  border: 1px solid var(--tile-edge-light);
+  border-radius: var(--radius-m);
+  background: var(--bg);
   color: var(--dim);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+li:has(small) time {
+  flex: none;
 }
 
 li strong {
@@ -194,9 +266,11 @@ li strong {
 #to-record::before {
   content: '';
   position: absolute;
-  inset: 8px;
+  inset: 14px;
   border-radius: 50%;
-  box-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.9), inset 0 -1px 2px rgba(255, 255, 255, 0.0), 0 1px 0 rgba(255, 255, 255, 0.00);
+  background: rgba(0,0,0,.3);
+  box-shadow: 
+    inset 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 /* the red button: domed (light top left, dark bottom right), a soft highlight on its top edge, and a
@@ -204,10 +278,13 @@ li strong {
 #to-record::after {
   content: '';
   position: absolute;
-  inset: 18px;
+  inset: 22px;
   border-radius: 50%;
   background: var(--rec);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.4), inset 0 -1px 1px rgba(0, 0, 0, 0.5);
+  box-shadow: 
+       0 2px 8px rgba(0, 0, 0, 0.5), 
+       inset 0 1px 1px rgba(255, 255, 255, 0.4), 
+       inset 0 -1px 1px rgba(0, 0, 0, 0.5);
   transition: transform 0.1s, box-shadow 0.1s;
 }
 
@@ -258,9 +335,9 @@ li strong {
   display: none;
 }
 
-/* a tap on the Record or Average tile: its line flickers off and on 3 times while its dashes run */
+/* a tap on the Record or Average tile: its line flickers off and on 3 times */
 #chart .level.flash .line {
-  animation: flicker 0.6s step-end, run 0.6s linear;
+  animation: flicker 0.6s step-end;
 }
 
 @keyframes flicker {
@@ -268,15 +345,6 @@ li strong {
   17%, 50%, 83% { opacity: 1; }
 }
 
-@keyframes run {
-  to { stroke-dashoffset: -16; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  #chart .level.flash .line {
-    animation: flicker 0.6s step-end;
-  }
-}
 
 #tiles .stat {
   cursor: pointer;
@@ -294,16 +362,21 @@ li strong {
   stroke-width: 1;
 }
 
-/* the overall average and the all-time record: dashed, straight across, a little heavier than the gridlines */
-#chart .dashed {
-  stroke-dasharray: 4 4;
-  stroke-width: 1.5;
+/* the overall average and the all-time record: solid, straight across */
+#chart .level .line {
+  stroke-width: 1;
+}
+
+/* the daily line across days without attempts: the last best carried on, not a time of that day */
+#chart .carried {
+  stroke-dasharray: 3 4;
 }
 
 /* the average line: still the series-avg colour, but quieter than the record line */
 #chart .series-avg .line {
-  stroke-opacity: 0.5;
+  stroke-opacity: 0.4;
 }
+
 
 /* a faint line at each axis label */
 #chart .grid {
@@ -337,7 +410,7 @@ li strong {
   min-height: 100dvh;
 }
 
-#home.empty > :not(h1, #home-empty, #to-profile, #to-record),
+#home.empty > :not(.topbar, #home-empty, #to-record),
 #home:not(.empty) #home-empty {
   display: none;
 }
@@ -417,19 +490,23 @@ li strong {
   contain-intrinsic-size: auto 240px;
 }
 
-/* on the log, the whole day tile is the link to the day's page */
-a.day {
+/* a tile that is a link as a whole: a log's day tile (to its day), home's Daily highs (to the log) */
+a.tile {
   display: block;
 }
 
 /* same lettering as the tiles' "Record" and "Average" */
 .tile-label {
-  padding: var(--gap-m) var(--gap-m);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--row);   /* a row, like the list rows under it */
+  padding: 0 var(--gap-m);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   text-align: center;
 }
 
-/* a tile title on the left, an arrow on the right: the log's day tiles */
+/* a tile title on the left, an arrow on the right: the tiles that are links */
 .tile-header {
   display: flex;
   align-items: center;
@@ -437,20 +514,8 @@ a.day {
   text-align: left;
 }
 
-/* the home screen's "All attempts" link: the last row of the Daily highs tile, centred */
-.tile-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: var(--gap-m);
-}
-
 /* the arrows: drawn like the other icons, sized to the text they follow */
-.tile-header svg,
-.tile-footer svg,
-.back svg,
-#to-profile svg {
+.tile-header svg {
   width: 1em;
   height: 1em;
   fill: none;
@@ -471,6 +536,8 @@ a.day {
 #delete-all,
 #clear-day {
   width: 100%;
+  min-height: var(--row);   /* a row's height, like the tiles' rows above them */
+  padding: 0 var(--gap-m);
   box-shadow: var(--tile-shadow);
 }
 
@@ -492,12 +559,30 @@ a.day {
   background: #000;
 }
 
-#record h1 {
+/* the record screen's top bar floats on the camera, under the iPhone notch; the side padding puts the
+   icons where the pages' padding puts theirs */
+#record .topbar {
   position: absolute;
   top: var(--safe-top);
   left: 0;
   right: 0;
+  z-index: 1;
+  padding-inline: var(--gap-s);
+}
+
+#record h1 {
   text-shadow: 0 1px 6px #000;
+}
+
+/* on the camera: icons bigger (24 px), white and shadowed, readable on any picture */
+#record .icon-button {
+  color: var(--text);
+  filter: drop-shadow(0 1px 4px #000);
+}
+
+#record .icon-button svg {
+  width: 24px;
+  height: 24px;
 }
 
 #stage,
@@ -576,17 +661,7 @@ a.day {
   bottom: calc(var(--gap-m) + var(--safe-bottom));
 }
 
-/* the timer in the middle; sound on/off and the camera switch in the left and right corners, level with
-   its digits. The corners stay put whatever the timer's width. */
-#timer-row {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: var(--gap-s);
-}
-
 #timer {
-  grid-column: 2;
   cursor: pointer;          /* tap to start and stop timing by hand */
   font-size: 5rem;
   font-weight: 400;
@@ -628,28 +703,20 @@ a.day {
   color: var(--text);
 }
 
-/* Sound on/off and the front/back switch, in the corners beside the timer: the button's own padding
-   puts the icon 16 px from the edge, like the icons at the top */
-.timer-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--icon-button);   /* its own size, not its column's: the column is the space beside the timer */
-  height: var(--icon-button);
-  padding: 0;
-  background: none;
-  color: var(--text);
-  filter: drop-shadow(0 1px 4px #000);   /* readable on any camera picture */
+/* Sound on/off and the front/back switch: icon buttons in the bottom corners, mirroring the debug
+   toggle and the cross in the top bar (the iPhone home bar below them) */
+.corner-button {
+  position: absolute;
+  bottom: calc(var(--safe-bottom) + var(--gap-s));
+  z-index: 1;
 }
 
 #mute {
-  grid-column: 1;
-  justify-self: start;
+  left: var(--gap-s);
 }
 
 #flip {
-  grid-column: 3;
-  justify-self: end;
+  right: var(--gap-s);
 }
 
 /* the icon shows the current state: a speaker with waves, or crossed out when muted */
@@ -658,28 +725,10 @@ a.day {
   display: none;
 }
 
-.timer-button svg,
-#debug-toggle svg,
-#close-record svg {
-  display: block;
-  width: 24px;
-  height: 24px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 
 
 /* 8. A day's page (#log/2026-10-23) ---------------------------------------- */
 
-#day,
-#home,
-#profile,
-#privacy {
-  position: relative;   /* for the icons at the top corners */
-}
 
 /* a link inside a setting's description: underlined, so it reads as one */
 .setting-note a {
@@ -705,18 +754,44 @@ a.day {
 }
 
 .prose p {
-  margin: 0 0 var(--gap-s);
+  margin: var(--gap-s) 0;
+}
+
+.prose a {
+  text-decoration: underline;
+}
+
+/* The summary tile's header is her name, editable: a text field that looks exactly like a header, the
+   pencil on the right saying it can be changed. Tapping anywhere on the header edits it. */
+.name-field {
+  gap: var(--gap-s);
+  cursor: text;
+}
+
+.name-field input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;            /* 1rem: at 16 px or more iPhone doesn't zoom in on the field */
+  outline: none;
+}
+
+.name-field input::placeholder {
   color: var(--dim);
 }
 
-/* to the Profile page: top right of home, level with the heading */
-#to-profile {
-  position: absolute;
-  top: calc(var(--safe-top) + var(--gap-m));
-  right: var(--gap-m);
-  display: flex;
-  font-size: 20px;          /* the icon is 1em: 20 px, like the other top bar icons outside the camera */
+.name-field svg {
+  flex: none;
   color: var(--dim);
+}
+
+/* while typing: the header's bottom line lights up, so it's clear what is being edited */
+.name-field:focus-within {
+  border-bottom-color: var(--dim);
 }
 
 /* the Profile summary: a label on the left, its value on the right, like an attempt row */
@@ -735,25 +810,12 @@ a.day {
 .setting-note a {
   display: block;
   margin-top: var(--gap-m);
-  text-decoration: none;
+  text-decoration: underline;
 }
 
-/* "What gets sent": folded open under the analytics setting, the summary as it is sent */
-.sent {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.sent summary {
-  padding: var(--gap-m);
-  cursor: pointer;
-}
-
-.sent .setting-note {
-  padding-top: 0;
-}
-
-.sent pre {
-  margin: 0 var(--gap-m) var(--gap-m);
+/* "What gets sent", at the end of the privacy statement: the summary as it is sent */
+.prose pre {
+  margin: 0;
   padding: var(--gap-s);
   overflow-x: auto;
   border-radius: var(--radius-m);
@@ -830,6 +892,7 @@ a.day {
 }
 
 #day-list li > time,
+#day-list li > small,
 #day-list li > strong {
   transform: translateX(var(--dx));
 }
@@ -849,35 +912,20 @@ a.day {
   transform: translateX(max(0px, 80px + var(--dx)));
 }
 
-/* debug box on/off: top left, level with the heading; bright while the box is shown */
-#debug-toggle {
-  position: absolute;
-  top: calc(var(--safe-top) + var(--gap-m));
-  left: var(--gap-m);
-  display: flex;
-  padding: 0;
-  background: none;
+/* debug box on/off: dim, bright while the box is shown */
+#record #debug-toggle {
   color: var(--dim);
 }
 
-#debug-toggle[aria-pressed="true"] {
+#record #debug-toggle[aria-pressed="true"] {
   color: var(--text);
-}
-
-/* close the camera, back to home: top right, level with the heading */
-#close-record {
-  position: absolute;
-  top: calc(var(--safe-top) + var(--gap-m));
-  right: var(--gap-m);
-  display: flex;
-  color: var(--text);
-  filter: drop-shadow(0 1px 4px #000);   /* readable on any camera picture */
 }
 
 /* the profile's segments: one pill, the segment on view filled */
 .segments {
   position: relative;      /* for the highlight */
   display: flex;
+  height: var(--row);      /* a row, like the tiles' rows under it; the segments fill it */
   margin-bottom: var(--gap-s);
   padding: 4px;
   border-radius: var(--tile-radius);
@@ -888,12 +936,13 @@ a.day {
 .segments a {
   position: relative;      /* above the highlight */
   flex: 1;
-  padding: var(--gap-s);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--gap-s);
   border-radius: var(--radius-m);
   color: var(--dim);
   font-weight: 500;
-  padding: var(--gap-m);
-  text-align: center;
 }
 
 .segments a[aria-current] {
@@ -906,7 +955,7 @@ a.day {
   top: 4px;
   bottom: 4px;
   left: 4px;
-  width: calc((100% - 8px) / 3);   /* one of the three segments */
+  width: calc((100% - 8px) / 2);   /* one of the two segments */
   border-radius: var(--radius-m);
   background: var(--tile);
   box-shadow: var(--tile-shadow);
@@ -942,12 +991,3 @@ a.day {
 @keyframes from-bottom { from { transform: translateY(100%); } }
 @keyframes to-bottom { to { transform: translateY(100%); } }
 
-/* back: top left, level with the heading */
-.back {
-  position: absolute;
-  top: calc(var(--safe-top) + var(--gap-m));
-  left: var(--gap-m);
-  display: flex;
-  font-size: 20px;          /* the arrow is 1em, like the tile arrows: 20 px in the top bar (the camera's are 24) */
-  color: var(--dim);
-}

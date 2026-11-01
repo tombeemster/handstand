@@ -1,6 +1,6 @@
 ---
 name: handstand
-description: Use for any work on Handstand (folder Documents/Dev/handstand, repo tombeemster/handstand), the phone web app that times handstands with the camera: pose detection rules, testing on recorded videos, the home/record/log screens, chart, sounds and speech, or any product decision for it.
+description: Use for any work on Handstand (folder Documents/Dev/handstand, repo tombeemster/handstand), the phone web app that times handstands with the camera: pose detection rules, testing on recorded videos, the home, record and profile screens, chart, settings and analytics, sounds and speech, or any product decision for it.
 ---
 
 # Handstand
@@ -18,7 +18,8 @@ Read `product.md` before any product decision (the job, principles, scope, decis
 ## Code map
 
 - `detect.js`: **all** detection rules, with no page and no clock. Its comments hold every threshold, why it has that value, and what was tried and dropped. Those comments are the source of truth: don't repeat the numbers elsewhere.
-- `app.js`: screens and routing (`#home`, `#record`, `#profile`, `#profile/log`, `#profile/settings`, `#log/<date>`; no tab bar, and old `#log` links go to `#profile`); stats read `counted()`, never `attempts`, so the manual timing setting applies everywhere; log and chart, camera, sound and speech.
+- `app.js`: screens and routing (`#home`, `#record`, `#profile` = All attempts (also `#profile/log`), `#profile/settings` (where the profile icon goes), `#privacy`, `#log/<date>`; no tab bar, and old `#log` links go to `#profile/log`); stats read `counted()`, never `attempts`, so the manual timing setting applies everywhere; log and chart, settings, camera, sound and speech.
+- `summary.js`: the anonymous session summary, a pure function (testable in Node). What it puts in must match the privacy page in `index.html`, which shows its output.
 - `style.css`: tokens first (`:root` holds every value; see `design.md` for their meaning).
 - `tools/replay.py` + `tools/replay.mjs`: Python finds the poses in recorded videos (cached in `tools/.cache`), Node runs them through the real `detect.js`. One copy of the rules.
 
@@ -49,6 +50,10 @@ Values that live in both `app.js` and `style.css` (keep them in step; each side'
 
 - **Chart:** two drawings at one scale, the fixed seconds labels and the scrolling plot. Their split is `L / W` in `renderChart` and `9.375%` in `#chart .seconds`.
 - **Swipe to delete:** `OPEN` (80 px) is the Delete button's width in `.row-delete`; the 200 ms wait before a long-swipe delete is the rows' transition.
+- **Segments:** the highlight's width in `.segments .thumb` is divided by the number of segments in `index.html` (now 2).
+- **Screen slides:** `DEPTH` in `app.js` decides the direction (deeper slides in from the right); the keyframes are in `style.css`. A new screen needs a depth.
+
+Shared sizes live in tokens, not per element: `--row` is the height of every row-shaped thing (list rows, tile headers, the segments, full-width buttons); every box is a `.tile`, with an extra class for its kind (`stat`, `day`, `setting`). Every screen starts with a `<header class="topbar">` (`--topbar` high: an optional `.icon-button` left, the `h1`, an optional `.icon-button` right); every tappable icon is an `.icon-button` (`--tap` square).
 
 Touch traps: a sideways gesture needs `touch-action: pan-y` on the row so up and down still scroll, and swipe or scroll is decided on the first 8 px of movement. Respect `prefers-reduced-motion` for anything that moves.
 
