@@ -6,7 +6,7 @@ url="$1"
 [ -z "$url" ] && { echo "Usage: bash worker/test-live.sh <worker url>"; exit 1; }
 origin="https://tombeemster.github.io"
 day=$(date -u +%F)
-good='"day":"'$day'","attempts_total":2,"timed_auto":2,"timed_manual":0,"near_misses":1,"fails":0,"avg_ms":2000,"best_ms":2500,"record_ms":9000,"manual_counted":false,"app_version":"0.0.0"'
+good='"day":"'$day'","attempts_total":2,"timed_auto":2,"timed_manual":0,"near_misses":1,"miss_other_person":0,"miss_unsteady":1,"miss_not_vertical":0,"miss_no_standing":0,"fails":0,"avg_ms":2000,"best_ms":2500,"record_ms":9000,"manual_counted":false,"app_version":"0.0.0"'
 
 check() {  # what, expected status, then the curl arguments
   what="$1"; want="$2"; shift 2

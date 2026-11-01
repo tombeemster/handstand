@@ -15,7 +15,7 @@ const log = [
   { started_at: `${today}T10:03:00`, duration_ms: 1501, method: 'auto' },
   { started_at: '2026-01-01T18:00:00', duration_ms: 5200, method: 'auto' },
 ];
-const good = sessionSummary({ log, from: `${today}T10:00:00`, misses: 2, fails: 1, countManual: false });
+const good = sessionSummary({ log, from: `${today}T10:00:00`, misses: { 'body not vertical': 2 }, fails: 1, countManual: false });
 
 let sent = [];
 let supabaseOk = true;
@@ -34,6 +34,8 @@ const cases = [
   ['a count out of range', { ...good, fails: 501 }, 400],
   ['a negative count', { ...good, fails: -1 }, 400],
   ['a time out of range', { ...good, record_ms: 600001 }, 400],
+  ['reasons that do not add up', { ...good, miss_unsteady: 1 }, 400],
+  ['a reason missing', (({ miss_unsteady, ...rest }) => rest)(good), 400],
   ['totals that do not add up', { ...good, attempts_total: 99 }, 400],
   ['a best above the record', { ...good, best_ms: good.record_ms + 1 }, 400],
   ['an old day', { ...good, day: '2020-01-01' }, 400],
@@ -51,7 +53,7 @@ for (const [name, body, status] of cases) {
 }
 
 // A session with only misses: no times at all, still valid
-const onlyMisses = sessionSummary({ log, from: `${today}T23:59:59`, misses: 3, fails: 0, countManual: true });
+const onlyMisses = sessionSummary({ log, from: `${today}T23:59:59`, misses: { 'not seen standing first': 3 }, fails: 0, countManual: true });
 assert.equal(onlyMisses.avg_ms, null);
 assert.equal(valid(onlyMisses), true, 'misses only');
 

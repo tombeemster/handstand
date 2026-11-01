@@ -8,6 +8,10 @@ create table public.session_summaries (
   timed_auto     smallint not null,
   timed_manual   smallint not null,
   near_misses    smallint not null,
+  miss_other_person smallint not null default 0,   -- near_misses by reason (MISS_REASONS in detect.js)
+  miss_unsteady     smallint not null default 0,
+  miss_not_vertical smallint not null default 0,
+  miss_no_standing  smallint not null default 0,
   fails          smallint not null,
   avg_ms         integer,
   best_ms        integer,

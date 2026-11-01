@@ -26,6 +26,15 @@ const MANUAL_KEY = 'handstand.countManual';
 let countManual = !!recall(MANUAL_KEY, false);
 // The attempts the stats are made of: all of them, or the automatic ones only
 const counted = () => countManual ? attempts : attempts.filter(a => a.method !== 'manual');
+// What the app saw but didn't time (near misses, attempts under 1 s), newest first: { started_at, why }.
+// Kept apart from the attempts, so they can't touch the record, the average, the chart or the export.
+const NOT_TIMED_KEY = 'handstand.notTimed', NOT_TIMED_MAX = 2000;
+let notTimed = recall(NOT_TIMED_KEY, []);
+const notTimedOn = day => notTimed.filter(f => f.started_at.startsWith(day));
+function saveNotTimed() {
+  notTimed = notTimed.slice(0, NOT_TIMED_MAX);
+  remember(NOT_TIMED_KEY, notTimed);
+}
 const best = () => Math.max(0, ...counted().map(a => a.duration_ms));
 // The attempts that set a new all-time record when they happened (ids), and the one that holds it now
 // (current: the last of them, so the first of two equal holds), or null before any attempt
@@ -74,7 +83,8 @@ const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><
 const longestFirst = items => [...items].sort((p, q) => q.duration_ms - p.duration_ms);
 
 function renderLog() {
-  $('export').hidden = $('delete-all').hidden = !attempts.length;   // nothing to export or delete yet
+  $('export').hidden = !attempts.length;   // nothing to export yet
+  $('delete-all').hidden = !attempts.length && !notTimed.length;
   $('import').hidden = !!attempts.length;   // an import is for an empty log: nothing to merge or overwrite
   const rec = records(), byDay = new Map();
   for (const a of attempts) {
@@ -82,10 +92,15 @@ function renderLog() {
     if (!byDay.has(day)) byDay.set(day, []);
     byDay.get(day).push(a);
   }
+  for (const f of notTimed) {   // a day with only those still has its tile, to reach them
+    const day = f.started_at.slice(0, 10);
+    if (!byDay.has(day)) byDay.set(day, []);
+  }
   $('days').innerHTML = [...byDay].sort(([p], [q]) => q.localeCompare(p)).map(([day, items]) => `
     <a class="tile day" href="#log/${day}">
       <div class="tile-label tile-header">${dayLabel(day)}${ARROW}</div>
-      <ul>${longestFirst(items).slice(0, LOG_TOP).map(a => row(a, rec.ids.has(a.id) ? 'best' : '', rec)).join('')}</ul>
+      <ul>${longestFirst(items).slice(0, LOG_TOP).map(a => row(a, rec.ids.has(a.id) ? 'best' : '', rec)).join('')
+        || `<li class="text-dim">${notTimedOn(day).length} not timed</li>`}</ul>
     </a>`).join('')
     // before her first attempt: today's tile, empty, with no arrow to a day page
     || `<div class="tile day">
@@ -95,21 +110,26 @@ function renderLog() {
 }
 
 // A day's own page: all its attempts, longest first. Records at their time are marked "best" (gold);
-// the day's longest (the first), if it isn't one of those, "top" (outlined).
+// the day's longest (the first), if it isn't one of those, "top" (outlined). Under them, dim, what the
+// app saw that day but didn't time, newest first, with the reason.
 function renderDay(day) {
   const rec = records();
   const items = longestFirst(attempts.filter(a => a.started_at.startsWith(day)));
   $('day-title').textContent = dayLabel(day);
-  $('day-list').innerHTML = items.map((a, i) => row(a, rec.ids.has(a.id) ? 'best' : i === 0 ? 'top' : '', rec, DELETE)).join('')
+  const missed = notTimedOn(day);
+  $('day-list').innerHTML = (items.map((a, i) => row(a, rec.ids.has(a.id) ? 'best' : i === 0 ? 'top' : '', rec, DELETE)).join('')
+    + missed.map(f => `<li><time>${f.started_at.slice(11)} · not timed</time><small>${f.why}</small></li>`).join(''))
     || '<li>No attempts on this day.</li>';
-  $('clear-day').hidden = !items.length;
+  $('clear-day').hidden = !items.length && !missed.length;
 }
 
-// The button under a day's page: deletes all that day's attempts, then back to the log
+// The button under a day's page: deletes all that day's attempts and not-timed rows, then back to the log
 $('clear-day').onclick = () => {
   const n = attempts.filter(a => a.started_at.startsWith(day)).length;
-  if (!confirm(`Delete all ${n} attempt${n === 1 ? '' : 's'} of ${dayLabel(day)}?`)) return;
+  if (!confirm(`Delete everything of ${dayLabel(day)}${n ? ` (${n} attempt${n === 1 ? '' : 's'})` : ''}?`)) return;
   attempts = attempts.filter(a => !a.started_at.startsWith(day));
+  notTimed = notTimed.filter(f => !f.started_at.startsWith(day));
+  saveNotTimed();
   save();
   location.hash = '#profile/log';
 };
@@ -240,6 +260,7 @@ function renderProfile() {
   const pb = best(), avg = overallAverage();
   $('summary').innerHTML = [
     ['Attempts', attempts.length + (manual ? ` (${manual} manual)` : '')],
+    ['Not timed', notTimed.length],
     ['Record', pb ? fmt(pb) + 's' : '–'],
     ['Average', avg ? fmt(avg) + 's' : '–'],
   ].map(([label, value]) => label === 'Record' && pb
@@ -254,7 +275,7 @@ function renderProfile() {
 // The privacy statement's "What gets sent": the last session's summary, exactly as it would be sent;
 // before any, today's attempts as an example
 function renderPrivacy() {
-  const shown = lastSummary ?? sessionSummary({ log: attempts, from: localIso(new Date()).slice(0, 10), misses: 0, fails: 0, countManual });
+  const shown = lastSummary ?? sessionSummary({ log: attempts, from: localIso(new Date()).slice(0, 10), misses: {}, fails: 0, countManual });
   $('sent-label').textContent = lastSummary ? "Your last session's summary:"
     : shown ? "An example, from today's attempts:" : 'After a session, its summary shows here.';
   $('sent-json').textContent = shown ? JSON.stringify(shown, null, 2) : '';
@@ -284,7 +305,7 @@ $('count-manual').onchange = e => {
 const METRICS_URL = 'https://handstand-metrics.tombeemster.workers.dev';
 const SHARE_KEY = 'handstand.shareSummaries';
 let shareSummaries = !!recall(SHARE_KEY, false);
-let session = null, lastSummary = null;   // the session under way: { from, misses, fails }; the last one's summary
+let session = null, lastSummary = null;   // the session under way: { from, misses: { reason: count }, fails }; the last one's summary
 $('share-summaries').onchange = e => {
   shareSummaries = e.target.checked;
   remember(SHARE_KEY, shareSummaries);
@@ -461,6 +482,8 @@ $('import-file').onchange = async e => {
 $('delete-all').onclick = () => {
   if (!confirm(`Delete all ${attempts.length} attempts? This can't be undone.`)) return;
   attempts = [];
+  notTimed = [];
+  saveNotTimed();
   save();
 };
 
@@ -638,12 +661,22 @@ function endAttempt(startTs, endTs, method, flagged = false, wait = 0) {
 // recordings: lost fired after nearly every landing, 31 times; the shoulders cue caught nothing the
 // near misses didn't already, at 30 fps or at 15. Every attempt the 15 fps replay lost was a near miss.)
 const misses = [];
-let missing;   // the pending sound and notice of the latest miss
-function noteMiss(ts, why) {
-  misses.unshift({ at: new Date(Date.now() - (performance.now() - ts)).toTimeString().slice(0, 8), why });
+// It's logged (notTimed) and counted for the session at the same moment, so what started an attempt or
+// was glued back on to one is never logged. under1s: an attempt too short, not a near miss.
+let missing;   // the pending sound, notice and logging of the latest miss
+function noteMiss(ts, why, under1s = false) {
+  const at = new Date(Date.now() - (performance.now() - ts));
+  misses.unshift({ at: at.toTimeString().slice(0, 8), why });
   console.info('near miss', misses[0]);
   clearTimeout(missing);
-  missing = setTimeout(() => { notice('Not timed – go again'); errorSound(); }, MERGE_MS);
+  missing = setTimeout(() => {
+    notTimed.unshift({ started_at: localIso(at), why });
+    saveNotTimed();
+    if (session && under1s) session.fails++;
+    else if (session) session.misses[why] = (session.misses[why] ?? 0) + 1;
+    notice('Not timed – go again');
+    errorSound();
+  }, MERGE_MS);
 }
 
 const detector = createDetector({
@@ -662,15 +695,11 @@ const detector = createDetector({
     // announced once the attempt can no longer resume (see MERGE_LATE_MS), so a short loss of
     // tracking isn't announced as a landing
     const ms = endAttempt(startTs, endTs, 'auto', flagged, MERGE_LATE_MS);
-    if (ms < MIN_MS) {
-      noteMiss(startTs, `timed ${fmt(ms)} s, under 1 s`);
-      if (session) session.fails++;
-    }
+    if (ms < MIN_MS) noteMiss(startTs, `timed ${fmt(ms)} s, under 1 s`, true);
     $('timer').textContent = fmt(ms);
   },
   onMiss(ts, why) {
     lastActive = Date.now();
-    if (manualStart === null && session) session.misses++;
     if (manualStart === null) noteMiss(ts, why);
   },
 });
@@ -969,7 +998,7 @@ async function startSession() {
 // sure signal on iPhone, which often never says the app was closed). Coming back then starts on home.
 // A page brought back from the browser's memory starts a new one.
 const openSession = () => {
-  session = { from: localIso(new Date()), misses: 0, fails: 0 };
+  session = { from: localIso(new Date()), misses: {}, fails: 0 };
   lastActive = Date.now();
 };
 function closeSession() {

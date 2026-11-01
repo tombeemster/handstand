@@ -66,7 +66,7 @@ export function armsUp(lm) {
 // Near misses: she was seen upside down for at least MISS_MS but no attempt started. The reason is the
 // furthest check she got to (by MISS_REASONS order), so a live session shows which rule cost an attempt.
 const MISS_MS = 500;
-const MISS_REASONS = ['lock on someone else', 'not steady 3 frames in a row', 'body not vertical', 'not seen standing first'];
+export const MISS_REASONS = ['lock on someone else', 'not steady 3 frames in a row', 'body not vertical', 'not seen standing first'];
 
 // events: onStart(ts, resumed), onEnd(startTs, endTs, flagged), onMiss(ts, reason)
 // resumed: the previous attempt continues, so whatever it logged should go

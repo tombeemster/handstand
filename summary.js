@@ -4,14 +4,23 @@
 
 export const APP_VERSION = '1.0.0';
 const MAX_MS = 600000;   // 10 minutes: no duration sent is longer (the Worker checks the same)
+// Each near miss reason of detect.js (MISS_REASONS) and the count it's sent as
+export const MISS_FIELDS = {
+  'lock on someone else': 'miss_other_person',
+  'not steady 3 frames in a row': 'miss_unsteady',
+  'body not vertical': 'miss_not_vertical',
+  'not seen standing first': 'miss_no_standing',
+};
 
 // log: every attempt (newest first, as stored); from: the session's start as local ISO time
-// (attempts started since then are this session's); misses, fails: its near misses and attempts under
+// (attempts started since then are this session's); misses, fails: its near misses, as { reason: count },
+// and attempts under
 // 1 s; countManual: the manual timing setting. Returns null for a session with nothing in it.
 // Times are of automatic attempts only, whatever the setting: a tapped time can be anything.
 export function sessionSummary({ log, from, misses, fails, countManual }) {
   const mine = log.filter(a => a.started_at >= from);
-  if (!mine.length && !misses && !fails) return null;
+  const nearMisses = Object.values(misses).reduce((sum, n) => sum + n, 0);
+  if (!mine.length && !nearMisses && !fails) return null;
   const auto = mine.filter(a => a.method === 'auto').map(a => Math.min(a.duration_ms, MAX_MS));
   const allAuto = log.filter(a => a.method === 'auto').map(a => Math.min(a.duration_ms, MAX_MS));
   return {
@@ -19,7 +28,8 @@ export function sessionSummary({ log, from, misses, fails, countManual }) {
     attempts_total: mine.length,
     timed_auto: auto.length,
     timed_manual: mine.length - auto.length,
-    near_misses: misses,
+    near_misses: nearMisses,
+    ...Object.fromEntries(Object.entries(MISS_FIELDS).map(([reason, field]) => [field, misses[reason] ?? 0])),
     fails,
     avg_ms: auto.length ? Math.round(auto.reduce((s, ms) => s + ms, 0) / auto.length) : null,
     best_ms: auto.length ? Math.max(...auto) : null,

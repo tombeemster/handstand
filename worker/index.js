@@ -9,7 +9,8 @@ const MAX_COUNT = 500;                            // attempts or misses in one s
 const MAX_MS = 600000;                            // 10 minutes, as summary.js caps them
 const DAY_MS = 86400000;
 
-const COUNTS = ['attempts_total', 'timed_auto', 'timed_manual', 'near_misses', 'fails'];
+const MISSES = ['miss_other_person', 'miss_unsteady', 'miss_not_vertical', 'miss_no_standing'];
+const COUNTS = ['attempts_total', 'timed_auto', 'timed_manual', 'near_misses', ...MISSES, 'fails'];
 const TIMES = ['avg_ms', 'best_ms', 'record_ms'];
 const FIELDS = ['day', ...COUNTS, ...TIMES, 'manual_counted', 'app_version'];
 
@@ -34,6 +35,7 @@ export function valid(s, now = Date.now()) {
     && typeof s.manual_counted === 'boolean'
     && typeof s.app_version === 'string' && /^\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(s.app_version)
     && s.attempts_total === s.timed_auto + s.timed_manual
+    && s.near_misses === MISSES.reduce((sum, f) => sum + s[f], 0)
     && (s.timed_auto > 0 ? s.avg_ms !== null && s.best_ms !== null && s.record_ms !== null
       && s.avg_ms <= s.best_ms && s.best_ms <= s.record_ms : s.avg_ms === null && s.best_ms === null);
 }
