@@ -1,5 +1,7 @@
 import { createDetector, framingHint, VIS, ANKLE_VIS, MIN_MS, MERGE_MS, MERGE_LATE_MS } from './detect.js';
 import { sessionSummary } from './summary.js';
+import { toCsv, parseCsv } from './csv.js';
+import { valid as validSummary } from './worker/index.js';
 
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
@@ -72,6 +74,7 @@ const longestFirst = items => [...items].sort((p, q) => q.duration_ms - p.durati
 
 function renderLog() {
   $('export').hidden = $('delete-all').hidden = !attempts.length;   // nothing to export or delete yet
+  $('import').hidden = !!attempts.length;   // an import is for an empty log: nothing to merge or overwrite
   const rec = records(), byDay = new Map();
   for (const a of attempts) {
     const day = a.started_at.slice(0, 10);
@@ -269,7 +272,10 @@ $('count-manual').onchange = e => {
 };
 
 // Analytics: sharing anonymous session totals, off by default. The summary of each session is made
-// when it ends (see endSession); sending it is not built yet (no Worker yet), so nothing leaves the phone.
+// when it ends (see closeSession) and sent only if this is on: once, no retry, no queue, nothing kept for
+// later; a failure is silent. sendBeacon so it also goes out while the page closes; its plain text body
+// needs no extra CORS round trip. Checked by the Worker's own rules first, so there's one set of them.
+const METRICS_URL = 'https://handstand-metrics.tombeemster.workers.dev';
 const SHARE_KEY = 'handstand.shareSummaries';
 let shareSummaries = !!recall(SHARE_KEY, false);
 let session = null, lastSummary = null;   // the session under way: { from, misses, fails }; the last one's summary
@@ -299,8 +305,8 @@ function renderHome() {
 // Every day from her first attempt's to today (at least the last 7), oldest first, as the chart and
 // the Daily highs list (its last 7) show them:
 // - own: that day's longest hold, or null if she didn't practise; at: when it started (hh:mm)
-// - high: what the chart draws, the last practice day's best carried over days without attempts;
-//   null only before her very first attempt
+// - high: the last practice day's best, carried over days without attempts; null only before her very
+//   first attempt
 // - record: the day her current all-time record was set (at most one day)
 function chartDays() {
   const dayKey = d => localIso(d).slice(0, 10);
@@ -325,10 +331,11 @@ function chartDays() {
 
 // The chart, over chartDays(), in the colours of the home tiles. It shows 7 days at a time, today on
 // the right; swipe right for the weeks before. The seconds labels stay put on the left.
-// - daily high: a line through each day's high, with the area under it. One dot in the record colour
-//   marks the day her current record was set, where the line meets the record line. (Days without
-//   attempts after it carry that value, so the line can run along the record line until she practises
-//   again: kept on purpose over ending the line at the last practice day.)
+// - daily high: a solid line from practice day to practice day, straight across any days between, with
+//   the area under it. From the last practice day to today a dashed line carries that value on, without
+//   an area: it only says nothing newer has been logged, and it's gone as soon as she practises again.
+//   One dot in the record colour marks the day her current record was set, where the line meets the
+//   record line.
 // - average of all her attempts ever (the Average tile) and the all-time record: solid horizontal lines.
 //   (A line through each day's average was tried: it barely moves, the overall value says as much.)
 function renderChart(chart) {
@@ -347,22 +354,19 @@ function renderChart(chart) {
   const dayW = (W - L) / 7, plotW = days.length * dayW;
   const x = i => (i + 0.5) * dayW, y = v => T + (1 - v / top) * (H - T - B);
 
-  // the daily bests as a straight line from day to day, the area under it fading out downwards. A stretch
-  // into a day she didn't practise only carries the last best on: drawn dashed, so it doesn't read as a time.
-  const pts = bests.map((v, i) => v === null ? null : [x(i), y(v)]).filter(Boolean);   // nulls only lead
+  // the practice days joined by a solid line, the area under it fading out downwards; then, if today
+  // isn't one of them, the dashed line carrying the last value on to today
+  const pts = chart.map((d, i) => d.own ? [x(i), y(d.own)] : null).filter(Boolean);
   let dailyLine = '';
   if (pts.length > 1) {
     const line = 'M' + pts.map(([px, py]) => `${px},${py}`).join(' L');
-    let practised = '', carried = '';
-    for (let i = 1; i < bests.length; i++) {
-      if (bests[i - 1] === null) continue;
-      const step = `M${x(i - 1)},${y(bests[i - 1])} L${x(i)},${y(bests[i])} `;
-      if (chart[i].own) practised += step; else carried += step;
-    }
     dailyLine += `<linearGradient id="best-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="fill-top"/><stop offset="1" class="fill-bottom"/></linearGradient>
       <path class="area" fill="url(#best-fill)" d="${line} L${pts.at(-1)[0]},${y(0)} L${pts[0][0]},${y(0)} Z"/>
-      <path class="line" d="${practised}"/>
-      <path class="line carried" d="${carried}"/>`;
+      <path class="line" d="${line}"/>`;
+  }
+  if (pts.length && pts.at(-1)[0] < x(days.length - 1)) {
+    const [lastX, lastY] = pts.at(-1);
+    dailyLine += `<path class="line carried" d="M${lastX},${lastY} L${x(days.length - 1)},${lastY}"/>`;
   }
   const dots = bests.map((v, i) => recordAt[i] ? `<circle cx="${x(i)}" cy="${y(v)}" r="3.75"/>` : '').join('');   // 7.5 units across, about 7.5 px
   // class level: what a tap on the matching home tile lights up (see the tiles' onclick)
@@ -396,12 +400,32 @@ $('tiles').onclick = e => {
 // The tap on Record is the moment iOS allows sound to be switched on for later
 $('to-record').onclick = unlockAudio;
 
-$('export').onclick = () => {
-  const csv = ['id,started_at,duration_ms,method,flagged',
-    ...attempts.map(a => [a.id, a.started_at, a.duration_ms, a.method, !!a.flagged].join(','))].join('\n');
-  const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'handstand.csv' });
+// Export: on a phone through its share sheet, as a real file with its own name (given as a link's
+// download, the phone's receiving app can name it itself: "shared-text-..."). Elsewhere a download.
+// The name carries the date and time, so exports sort and never overwrite each other.
+$('export').onclick = async () => {
+  const name = `handstand-attempts-${localIso(new Date()).replace('T', ' ').replace(/:/g, '_')}.csv`;
+  const file = new File([toCsv(attempts)], name, { type: 'text/csv' });
+  if (matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) {
+    try { return await navigator.share({ files: [file] }); }
+    catch (err) { if (err.name === 'AbortError') return; }   // cancelled; anything else: download instead
+  }
+  const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: name });
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);   // straight away, Safari may not have the file yet
+};
+
+// Import, on an empty log only (see renderLog): an exported file back in, e.g. on a new phone
+$('import').onclick = () => $('import-file').click();
+$('import-file').onchange = async e => {
+  const file = e.target.files[0];
+  e.target.value = '';   // so the same file can be picked again
+  if (!file) return;
+  const read = parseCsv(await file.text());
+  if (!read || !read.attempts.length) return alert("That file doesn't look like a Handstand export.");
+  attempts = read.attempts;
+  save();
+  alert(`Imported ${read.attempts.length} attempts.` + (read.skipped ? ` ${read.skipped} rows couldn't be read.` : ''));
 };
 
 // Under the export: empties the whole log, after asking (export first to keep a copy)
@@ -882,7 +906,7 @@ $('zoom').onclick = e => {
 // ---- session: from entering the record screen until leaving it ----
 async function startSession() {
   live = true;
-  session = { from: localIso(new Date()), misses: 0, fails: 0 };
+  openSession();
   manualStart = null;
   detector.reset();
   resetPace();
@@ -908,13 +932,29 @@ async function startSession() {
   }
 }
 
+// One session: one visit to the record screen. Its summary is made once, when it ends: on leaving the
+// screen, or on closing the app while on it (pagehide). A page brought back from the browser's memory
+// starts a new one.
+const openSession = () => { session = { from: localIso(new Date()), misses: 0, fails: 0 }; };
+function closeSession() {
+  if (!session) return;
+  const summary = sessionSummary({ log: attempts, ...session, countManual });
+  session = null;
+  if (!summary) return;
+  lastSummary = summary;
+  if (shareSummaries && validSummary(summary)) {
+    try { navigator.sendBeacon(METRICS_URL, JSON.stringify(summary)); } catch {}
+  }
+}
+addEventListener('pagehide', closeSession);
+addEventListener('pageshow', e => { if (e.persisted && live) openSession(); });
+
 function endSession() {
   // An attempt still running is dropped, not logged. (Logging it, ended now, was tried: a detection
   // still "up" by mistake then became a count that never happened.)
   live = false;
   manualStart = null;
-  if (session) lastSummary = sessionSummary({ log: attempts, ...session, countManual }) ?? lastSummary;
-  session = null;
+  closeSession();
   $('video').cancelVideoFrameCallback(frameReq);   // or the pending request runs as a second loop next session
   detector.reset();
   lastId = null;

@@ -367,7 +367,7 @@ li strong {
   stroke-width: 1;
 }
 
-/* the daily line across days without attempts: the last best carried on, not a time of that day */
+/* the daily line from the last practice day to today: the last best carried on, not a time of those days */
 #chart .carried {
   stroke-dasharray: 3 4;
 }
@@ -429,6 +429,34 @@ li strong {
   max-width: 240px;
   line-height: 1.4;
   text-align: center;
+}
+
+/* the arrow over the Record button, only in the empty state: floats just above it, bobbing down
+   towards it and back (still with reduced motion) */
+#start-here {
+  position: fixed;
+  bottom: calc(var(--gap-m) + var(--safe-bottom) + var(--record-button) + var(--gap-l));
+  left: 50%;
+  z-index: 1;
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  fill: none;
+  stroke: var(--dim);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: bob 1.4s ease-in-out infinite;
+}
+
+@keyframes bob {
+  50% { transform: translateY(8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #start-here {
+    animation: none;
+  }
 }
 
 /* All-time record and average side by side, as one row of tiles */
@@ -532,6 +560,7 @@ a.tile {
 }
 
 /* the full-width buttons under the tiles: the log's Export and Delete all, a day's Delete daily attempts */
+#import,
 #export,
 #delete-all,
 #clear-day {

@@ -20,8 +20,10 @@
     <a id="to-profile" class="icon-button" href="#profile/settings" aria-label="Profile and settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
   </header>
   <!-- before her first attempt: this tile alone, in place of the others (the Record button starts) -->
-  <div id="home-empty">
+  <div class="tile" id="home-empty">
     <p>You haven't logged your first handstand yet.</p>
+    <!-- pointing down at the Record button, bobbing gently: where to start. Icon: Lucide arrow-down -->
+    <svg id="start-here" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
   </div>
   <div id="tiles">
     <!-- a tap lights up the tile's line in the chart (data-line) -->
@@ -104,6 +106,9 @@
   </nav>
   <div id="segment-log">
     <div id="days"></div>
+    <!-- import: only on an empty log. The button opens the hidden file picker -->
+    <button id="import">Import (.csv)</button>
+    <input id="import-file" type="file" accept=".csv,text/csv" hidden>
     <button id="export">Export (.csv)</button>
     <button id="delete-all">Delete all attempts</button>
   </div>

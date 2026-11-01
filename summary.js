@@ -1,5 +1,5 @@
-// One session's anonymous summary: what the analytics switch sends (once the Worker is there) and what
-// "What gets sent" shows. Pure: no page, no clock, no storage, so it can be tested in Node.
+// One session's anonymous summary: what the analytics switch sends and what "What gets sent" on the
+// privacy page shows. Pure: no page, no clock, no storage, so it can be tested in Node.
 // No ids of any kind, no times of day: a summary can't be linked to a person, a phone or another summary.
 
 export const APP_VERSION = '1.0.0';

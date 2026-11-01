@@ -19,7 +19,10 @@ Read `product.md` before any product decision (the job, principles, scope, decis
 
 - `detect.js`: **all** detection rules, with no page and no clock. Its comments hold every threshold, why it has that value, and what was tried and dropped. Those comments are the source of truth: don't repeat the numbers elsewhere.
 - `app.js`: screens and routing (`#home`, `#record`, `#profile` = All attempts (also `#profile/log`), `#profile/settings` (where the profile icon goes), `#privacy`, `#log/<date>`; no tab bar, and old `#log` links go to `#profile/log`); stats read `counted()`, never `attempts`, so the manual timing setting applies everywhere; log and chart, settings, camera, sound and speech.
-- `summary.js`: the anonymous session summary, a pure function (testable in Node). What it puts in must match the privacy page in `index.html`, which shows its output.
+- `csv.js`: the export format, written and read in one place (every imported field is checked: the values end up in the page).
+- `summary.js`: the anonymous session summary, a pure function (testable in Node). What it puts in must match the privacy page in `index.html`, which shows its output, and `valid` in `worker/index.js`.
+- `worker/`: the Cloudflare Worker (and `schema.sql`) that stores the summaries in Supabase. The app imports its `valid`, so there's one set of rules. After changing `index.js`, the maker redeploys with `npx wrangler deploy`; the key is a Worker secret, never in this repo.
+- Tests: `node tools/test.mjs` (summary and CSV), `node worker/test.mjs` (the Worker).
 - `style.css`: tokens first (`:root` holds every value; see `design.md` for their meaning).
 - `tools/replay.py` + `tools/replay.mjs`: Python finds the poses in recorded videos (cached in `tools/.cache`), Node runs them through the real `detect.js`. One copy of the rules.
 
@@ -53,7 +56,7 @@ Values that live in both `app.js` and `style.css` (keep them in step; each side'
 - **Segments:** the highlight's width in `.segments .thumb` is divided by the number of segments in `index.html` (now 2).
 - **Screen slides:** `DEPTH` in `app.js` decides the direction (deeper slides in from the right); the keyframes are in `style.css`. A new screen needs a depth.
 
-Shared sizes live in tokens, not per element: `--row` is the height of every row-shaped thing (list rows, tile headers, the segments, full-width buttons); every box is a `.tile`, with an extra class for its kind (`stat`, `day`, `setting`). Every screen starts with a `<header class="topbar">` (`--topbar` high: an optional `.icon-button` left, the `h1`, an optional `.icon-button` right); every tappable icon is an `.icon-button` (`--tap` square).
+Shared sizes live in tokens, not per element: `--row` is the height of every row-shaped thing (list rows, tile headers, the segments, full-width buttons); every box is a `.tile`, with an extra class for its kind (`stat`, `day`, `setting`). Every screen starts with a `<header class="topbar">` (`--topbar` high: an optional `.icon-button` left, the `h1`, an optional `.icon-button` right; the columns follow from the order, so a new screen only writes the markup); every tappable icon is an `.icon-button` (`--tap` square, 20 px icon, 24 on the camera). Don't position icons one by one again.
 
 Touch traps: a sideways gesture needs `touch-action: pan-y` on the row so up and down still scroll, and swipe or scroll is decided on the first 8 px of movement. Respect `prefers-reduced-motion` for anything that moves.
 

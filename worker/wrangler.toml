@@ -1,0 +1,9 @@
+# The Cloudflare Worker that stores anonymous session summaries. See README.md in this folder.
+# No secrets here: this repo is public. SUPABASE_URL and SUPABASE_KEY are set with `wrangler secret put`.
+name = "handstand-metrics"
+main = "index.js"
+compatibility_date = "2026-10-01"
+
+# Nothing about requests is kept: the privacy page says so
+[observability]
+enabled = false
