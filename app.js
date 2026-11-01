@@ -27,7 +27,7 @@ let countManual = !!recall(MANUAL_KEY, false);
 // The attempts the stats are made of: all of them, or the automatic ones only
 const counted = () => countManual ? attempts : attempts.filter(a => a.method !== 'manual');
 // What the app saw but didn't time (near misses, attempts under 1 s), newest first: { started_at, why }.
-// Kept apart from the attempts, so they can't touch the record, the average, the chart or the export.
+// Kept apart from the attempts, so they can't touch the record, the average or the chart (Export does include them).
 const NOT_TIMED_KEY = 'handstand.notTimed', NOT_TIMED_MAX = 2000;
 let notTimed = recall(NOT_TIMED_KEY, []);
 const notTimedOn = day => notTimed.filter(f => f.started_at.startsWith(day));
@@ -83,9 +83,10 @@ const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><
 const longestFirst = items => [...items].sort((p, q) => q.duration_ms - p.duration_ms);
 
 function renderLog() {
-  $('export').hidden = !attempts.length;   // nothing to export yet
-  $('delete-all').hidden = !attempts.length && !notTimed.length;
-  $('import').hidden = !!attempts.length;   // an import is for an empty log: nothing to merge or overwrite
+  const empty = !attempts.length && !notTimed.length;
+  $('export').hidden = empty;   // nothing to export yet
+  $('delete-all').hidden = empty;
+  $('import').hidden = !empty;   // an import is for an empty log: nothing to merge or overwrite
   const rec = records(), byDay = new Map();
   for (const a of attempts) {
     const day = a.started_at.slice(0, 10);
@@ -440,7 +441,7 @@ async function deliver(file) {
 }
 
 // Export. The name carries the date and time, so exports sort and never overwrite each other.
-$('export').onclick = () => deliver(new File([toCsv(attempts)],
+$('export').onclick = () => deliver(new File([toCsv(attempts, notTimed)],
   `handstand-attempts-${localIso(new Date()).replace('T', ' ').replace(/:/g, '_')}.csv`, { type: 'text/csv' }));
 
 // Share her current record (as on home, so following the manual timing setting) as a picture. iPhone only
@@ -472,10 +473,13 @@ $('import-file').onchange = async e => {
   e.target.value = '';   // so the same file can be picked again
   if (!file) return;
   const read = parseCsv(await file.text());
-  if (!read || !read.attempts.length) return alert("That file doesn't look like a Handstand export.");
+  if (!read || !(read.attempts.length + read.notTimed.length)) return alert("That file doesn't look like a Handstand export.");
   attempts = read.attempts;
+  notTimed = read.notTimed;
+  saveNotTimed();
   save();
-  alert(`Imported ${read.attempts.length} attempts.` + (read.skipped ? ` ${read.skipped} rows couldn't be read.` : ''));
+  alert(`Imported ${read.attempts.length} attempts and ${read.notTimed.length} not timed.`
+    + (read.skipped ? ` ${read.skipped} rows couldn't be read.` : ''));
 };
 
 // Under the export: empties the whole log, after asking (export first to keep a copy)

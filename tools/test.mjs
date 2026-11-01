@@ -64,6 +64,23 @@ assert.deepEqual(back.attempts, [flagged, ...log]);
 assert.equal(back.skipped, 0);
 assert.deepEqual(parseCsv('﻿' + toCsv(log).replace(/\n/g, '\r\n')).attempts, log, 'BOM and Windows line ends');
 
+// CSV: what wasn't timed goes along, in time order, comma and all; apart from the attempts when read back
+const missed = [{ started_at: '2026-11-01T10:05:30', why: 'timed 0.80 s, under 1 s' }, { started_at: '2026-11-01T10:03:30', why: 'body not vertical' }];
+const withMissed = toCsv(log, missed);
+assert.deepEqual(withMissed.split('\n').slice(1).map(l => l.split(',')[1]),
+  ['2026-11-01T10:05:30', '2026-11-01T10:05:00', '2026-11-01T10:04:00', '2026-11-01T10:03:30', '2026-11-01T10:03:00', '2026-10-30T18:00:00']);
+const backBoth = parseCsv(withMissed);
+assert.deepEqual(backBoth.attempts, log);
+assert.deepEqual(backBoth.notTimed, missed);
+assert.equal(backBoth.skipped, 0);
+
+// CSV: a file from before this column still reads
+const oldFile = 'id,started_at,duration_ms,method,flagged\nabc,2026-01-01T10:00:00,1500,manual,true\n';
+assert.deepEqual(parseCsv(oldFile), { attempts: [{ id: 'abc', started_at: '2026-01-01T10:00:00', duration_ms: 1500, method: 'manual', flagged: true }], notTimed: [], skipped: 0 });
+
+// CSV: a reason is checked as well: it ends up in the page
+assert.equal(parseCsv(`${withMissed.split('\n')[0]}\n,2026-01-01T10:00:00,,not_timed,false,"<img src=x>"`).skipped, 1);
+
 // CSV: refused, or skipped row by row; nothing unchecked reaches the page
 assert.equal(parseCsv('a,b\n1,2'), null, 'not an export');
 const dirty = parseCsv('id,started_at,duration_ms,method,flagged\n<img>,2026-01-01T10:00:00,1000,auto,false\nabc,2026-01-01T10:00:00,-5,auto,false\nabc,<b>,1000,auto,false\nabc,2026-01-01T10:00:00,1000,hack,false\nabc,2026-01-01T10:00:00,1500,manual,false\n');
