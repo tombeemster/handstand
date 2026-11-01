@@ -19,6 +19,7 @@ Read `product.md` before any product decision (the job, principles, scope, decis
 
 - `detect.js`: **all** detection rules, with no page and no clock. Its comments hold every threshold, why it has that value, and what was tried and dropped. Those comments are the source of truth: don't repeat the numbers elsewhere.
 - `app.js`: screens and routing (`#home`, `#record`, `#profile` = All attempts (also `#profile/log`), `#profile/settings` (where the profile icon goes), `#privacy`, `#log/<date>`; no tab bar, and old `#log` links go to `#profile/log`); stats read `counted()`, never `attempts`, so the manual timing setting applies everywhere; log and chart, settings, camera, sound and speech.
+- `share.js`: draws the record picture on a canvas (`prepareCard` in `app.js` draws it ahead: iPhone only allows sharing straight after a tap).
 - `csv.js`: the export format, written and read in one place (every imported field is checked: the values end up in the page).
 - `summary.js`: the anonymous session summary, a pure function (testable in Node). What it puts in must match the privacy page in `index.html`, which shows its output, and `valid` in `worker/index.js`.
 - `worker/`: the Cloudflare Worker (and `schema.sql`) that stores the summaries in Supabase. The app imports its `valid`, so there's one set of rules. After changing `index.js`, the maker redeploys with `npx wrangler deploy`; the key is a Worker secret, never in this repo.

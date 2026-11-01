@@ -22,12 +22,12 @@ Dark, calm and restrained: a few tiles on a near-black page, no decoration. The 
 - **Solid line with a fading area:** each practice day's high joined straight to the next practice day's, 7 days on screen with today on the right; swipe for the weeks back to her first attempt.
 - **Dashed, without an area:** only from the last practice day to today, carrying that value on. It says nothing newer has been logged, and it's gone as soon as she practises again. Rows for days without attempts in Daily Highs stay empty.
 - **Straight across:** all-time values, both solid: the record in gold, the average in white at half opacity, quieter than the record. Tapping the Record or Average tile makes its line flicker 3 times, to show which line is which.
-- **One record dot, at most:** on the day the current record was set, where the daily line meets the record line. The same dot marks the current record in every list.
+- **One record dot, at most:** on the day the current record was set, where the daily line meets the record line. In the lists, the current record has a gold "record" tag; in the log and on a day's page, earlier records have the same tag in dim.
 - **Y axis:** whole even seconds, at most 8 faint gridlines.
 
 ## Type and layout
 
-- **Vend Sans.** Headings small, uppercase and letter-spaced; times in tabular figures so digits don't jump.
+- **Inter.** Headings small, uppercase and letter-spaced; times in tabular figures so digits don't jump.
 - **Tiles:** every box is a `.tile` (background, radius, shadow, 8 px apart); an extra class says what kind: `stat` (Record, Average), `day` (a day's attempts), `setting` (a name, a switch, a description). The chart is a tile too. Lists live inside their tile, never on the page background.
 - **No tab bar.** Home has one Record button fixed at the bottom, drawn like a camera's REC button (a red domed button in a dark recessed housing, the one skeuomorphic element) and a profile icon top right. Record closes with a cross top right. Profile is titled with her name once set, and has two segments: Attempts (one tile per day with its 3 longest attempts) and Settings (the summary with her editable name on top, then the settings). A day's page lists all of a day's attempts, longest first. (A tab bar for Home, Record and Log was used until 31 October; a grid of small day tiles was tried and dropped.)
 - **Record screen:** the camera fills the whole screen. Text on the camera sits on a dark see-through backing; the timer is big and centred; the debug toggle is top left, the cross top right; mute and camera flip sit in the bottom corners, mirroring the icons at the top; the lens choice is under the timer.

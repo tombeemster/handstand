@@ -1,6 +1,7 @@
 import { createDetector, framingHint, VIS, ANKLE_VIS, MIN_MS, MERGE_MS, MERGE_LATE_MS } from './detect.js';
 import { sessionSummary } from './summary.js';
 import { toCsv, parseCsv } from './csv.js';
+import { recordCard } from './share.js';
 import { valid as validSummary } from './worker/index.js';
 
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
@@ -55,14 +56,14 @@ const stamp = a => `${a.started_at.slice(8, 10)}/${a.started_at.slice(5, 7)}/${a
 // A day as its tile title: "Friday 23 October", in the browser's language
 const dayLabel = day => new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
-// The current record's mark in every list, the same dot as in the chart
-const DOT = '<span class="record-dot series-record"></span>';
+// The tag of an attempt that set a record at its time; gold for the one that holds it now
+const RECORD_TAG = '<small class="is-record">record</small>', OLD_RECORD_TAG = '<small>record</small>';
 
 // One attempt as a list row: its date and time, its duration; cls: 'best' (a record), 'top' or ''.
-// rec: records(), for the dot on the current record; end: more inside the row (a day's Delete button).
+// rec: records(), for the record tags; end: more inside the row (a day's Delete button).
 // A tapped attempt is labelled "manual".
 const row = (a, cls, rec, end = '') => `<li class="${cls}" data-id="${a.id}">
-  <time>${stamp(a)}</time>${a.method === 'manual' ? '<small>manual</small>' : ''}<strong>${a === rec.current ? DOT : ''}${fmt(a.duration_ms)}s</strong>${end}
+  <time>${stamp(a)}</time>${a === rec.current ? RECORD_TAG : rec.ids.has(a.id) ? OLD_RECORD_TAG : ''}${a.method === 'manual' ? '<small>manual</small>' : ''}<strong>${fmt(a.duration_ms)}s</strong>${end}
 </li>`;
 
 // The log: one tile per day, newest day first, each with that day's 3 longest attempts; tapping the tile opens
@@ -220,7 +221,7 @@ function route() {
   };
   const slide = routed && slideFor(from, screen);
   routed = true;
-  if (slide && document.startViewTransition && !calm.matches) {
+  if (slide && document.startViewTransition && !calm.matches && !document.hidden) {
     document.documentElement.dataset.slide = slide;
     document.startViewTransition(show);
   } else show();
@@ -241,9 +242,13 @@ function renderProfile() {
     ['Attempts', attempts.length + (manual ? ` (${manual} manual)` : '')],
     ['Record', pb ? fmt(pb) + 's' : '–'],
     ['Average', avg ? fmt(avg) + 's' : '–'],
-  ].map(([label, value]) => `<li><span>${label}</span><strong>${value}</strong></li>`).join('');
+  ].map(([label, value]) => label === 'Record' && pb
+    // the record's row is the share button, with the forward icon after the value
+    ? `<li class="share-row"><button id="share-record" aria-label="Share her record of ${value}"><span>${label}</span><strong>${value}</strong>${FORWARD}</button></li>`
+    : `<li><span>${label}</span><strong>${value}</strong></li>`).join('');
   $('count-manual').checked = countManual;
   $('share-summaries').checked = shareSummaries;
+  prepareCard();
 }
 
 // The privacy statement's "What gets sent": the last session's summary, exactly as it would be sent;
@@ -262,6 +267,7 @@ $('athlete-name').oninput = e => {
   athleteName = e.target.value.trim();
   remember(NAME_KEY, athleteName);
   $('profile-title').textContent = athleteName || 'Profile';   // the page's title is her name, once she has one
+  prepareCard();   // the picture to share carries it too
 };
 $('athlete-name').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); };   // done: close the keyboard
 
@@ -298,7 +304,7 @@ function renderHome() {
   // the chart's last 7 days as a list, today on top: each day's own best, or nothing if she didn't practise
   // (showing the carried-over best there, in dim, was tried: it read as a time logged that day)
   $('highs').innerHTML = days.slice(-7).reverse().map(d => `<li class="${d.record ? 'best' : ''}">
-    <time>${d.date.toLocaleDateString(undefined, { weekday: 'long' })}${d.at ? ` - ${d.at}` : ''}</time><strong>${d.record ? DOT : ''}${d.own ? fmt(d.own) + 's' : ''}</strong>
+    <time>${d.date.toLocaleDateString(undefined, { weekday: 'long' })}${d.at ? ` - ${d.at}` : ''}</time>${d.record ? RECORD_TAG : ''}<strong>${d.own ? fmt(d.own) + 's' : ''}</strong>
   </li>`).join('');
 }
 
@@ -400,19 +406,42 @@ $('tiles').onclick = e => {
 // The tap on Record is the moment iOS allows sound to be switched on for later
 $('to-record').onclick = unlockAudio;
 
-// Export: on a phone through its share sheet, as a real file with its own name (given as a link's
-// download, the phone's receiving app can name it itself: "shared-text-..."). Elsewhere a download.
-// The name carries the date and time, so exports sort and never overwrite each other.
-$('export').onclick = async () => {
-  const name = `handstand-attempts-${localIso(new Date()).replace('T', ' ').replace(/:/g, '_')}.csv`;
-  const file = new File([toCsv(attempts)], name, { type: 'text/csv' });
+// A file out of the app: on a phone through its share sheet, as a real file with its own name (given as
+// a link's download, the phone's receiving app can name it itself: "shared-text-..."). Elsewhere a download.
+async function deliver(file) {
   if (matchMedia('(pointer: coarse)').matches && navigator.canShare?.({ files: [file] })) {
     try { return await navigator.share({ files: [file] }); }
     catch (err) { if (err.name === 'AbortError') return; }   // cancelled; anything else: download instead
   }
-  const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: name });
+  const link = Object.assign(document.createElement('a'), { href: URL.createObjectURL(file), download: file.name });
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);   // straight away, Safari may not have the file yet
+}
+
+// Export. The name carries the date and time, so exports sort and never overwrite each other.
+$('export').onclick = () => deliver(new File([toCsv(attempts)],
+  `handstand-attempts-${localIso(new Date()).replace('T', ' ').replace(/:/g, '_')}.csv`, { type: 'text/csv' }));
+
+// Share her current record (as on home, so following the manual timing setting) as a picture. iPhone only
+// allows sharing straight after a tap and drawing takes a moment, so the picture is drawn ahead, whenever
+// the profile is drawn or the name changes; a tap before it's ready still works, by waiting for it.
+const FORWARD = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 17 5-5-5-5"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg>';   // Lucide forward
+let card = null;   // { key: what it shows, file: a Promise of the file }
+function prepareCard() {
+  const rec = records().current;
+  if (!rec) return card = null;
+  const key = `${rec.id} ${athleteName}`;
+  if (card?.key === key) return;
+  const time = fmt(rec.duration_ms) + 's';
+  const date = new Date(rec.started_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
+  card = { key, file: recordCard({ time, date, name: athleteName })
+    .then(png => new File([png], `handstand-record-${time}.png`, { type: 'image/png' })) };
+}
+// The row is redrawn with the summary, so the tap is caught on the list
+$('summary').onclick = async e => {
+  if (!e.target.closest('#share-record')) return;
+  prepareCard();
+  deliver(await card.file);
 };
 
 // Import, on an empty log only (see renderLog): an exported file back in, e.g. on a new phone
@@ -619,6 +648,7 @@ function noteMiss(ts, why) {
 
 const detector = createDetector({
   onStart(ts, resumed) {
+    lastActive = Date.now();
     if (manualStart !== null) return;   // timing by tap: detection doesn't interfere
     clearTimeout(missing);   // a miss just before was the start of this one
     if (resumed) clearTimeout(announcing);   // it hadn't really ended: say nothing
@@ -627,6 +657,7 @@ const detector = createDetector({
     $('timer').classList.remove('record');
   },
   onEnd(startTs, endTs, flagged) {
+    lastActive = Date.now();
     if (manualStart !== null) return;
     // announced once the attempt can no longer resume (see MERGE_LATE_MS), so a short loss of
     // tracking isn't announced as a landing
@@ -638,6 +669,7 @@ const detector = createDetector({
     $('timer').textContent = fmt(ms);
   },
   onMiss(ts, why) {
+    lastActive = Date.now();
     if (manualStart === null && session) session.misses++;
     if (manualStart === null) noteMiss(ts, why);
   },
@@ -933,9 +965,13 @@ async function startSession() {
 }
 
 // One session: one visit to the record screen. Its summary is made once, when it ends: on leaving the
-// screen, or on closing the app while on it (pagehide). A page brought back from the browser's memory
-// starts a new one.
-const openSession = () => { session = { from: localIso(new Date()), misses: 0, fails: 0 }; };
+// screen, or the moment the page goes hidden (phone locked, another app, the app switcher: the last
+// sure signal on iPhone, which often never says the app was closed). Coming back then starts on home.
+// A page brought back from the browser's memory starts a new one.
+const openSession = () => {
+  session = { from: localIso(new Date()), misses: 0, fails: 0 };
+  lastActive = Date.now();
+};
 function closeSession() {
   if (!session) return;
   const summary = sessionSummary({ log: attempts, ...session, countManual });
@@ -946,8 +982,23 @@ function closeSession() {
     try { navigator.sendBeacon(METRICS_URL, JSON.stringify(summary)); } catch {}
   }
 }
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden || !live) return;
+  closeSession();   // now, not via the route below: a hidden page may be frozen before that runs
+  location.hash = '#home';
+});
 addEventListener('pagehide', closeSession);
 addEventListener('pageshow', e => { if (e.persisted && live) openSession(); });
+
+// Left alone on the record screen for IDLE_MS (no attempt, no near miss, no tap): back to home, which
+// ends the session and sends its summary, and turns the camera off. Never during an attempt. Seeing
+// someone doesn't count as active: that would keep a forgotten camera on for good.
+const IDLE_MS = 2 * 60 * 1000;
+let lastActive = 0;
+$('record').addEventListener('pointerdown', () => { lastActive = Date.now(); });
+setInterval(() => {
+  if (live && manualStart === null && detector.state.startTs === null && Date.now() - lastActive > IDLE_MS) location.hash = '#home';
+}, 5000);
 
 function endSession() {
   // An attempt still running is dropped, not logged. (Logging it, ended now, was tried: a detection
