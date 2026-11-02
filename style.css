@@ -47,7 +47,7 @@
 
   /* the Record button floating at the bottom of home, and all the space it takes there: the button,
      the gap under it and the iPhone home bar below that */
-  --record-button: 72px;
+  --record-button: 64px;
   --bottom-space: calc(var(--record-button) * 0.5);
 
   --row: 48px;             /* the height of everything row-shaped: list rows, tile headers, the segments,
@@ -228,7 +228,7 @@ li strong {
 }
 
 .is-record {
-  color: var(--gold);
+  color: var(--text);
 }
 
 .is-fail{
@@ -240,7 +240,8 @@ li strong {
 #home,
 #day,
 #profile,
-#privacy {
+#privacy,
+#welcome {
   padding: var(--safe-top) var(--gap-s) calc(var(--safe-bottom) + var(--gap-l));
 }
 
@@ -261,23 +262,34 @@ li strong {
   left: 50%;
   z-index: 1;
   transform: translateX(-50%);
-  width: var(--record-button);
+  display: flex;
+  align-items: center;
   height: var(--record-button);
-  border-radius: 50%;
+  padding: 0 24px 0 64px;   /* on the left: the well's 14 + 44 and a gap */
+  border-radius: 99px;
   background: var(--bg);
   box-shadow: var(--tile-shadow), 0 6px 16px rgba(0, 0, 0, 0.5);
   -webkit-tap-highlight-color: transparent;
+}
+
+/* the letters, spaced out like the print on a camera */
+#to-record span {
+  color: var(--dim);
+  letter-spacing: 0.4em;
+  margin-right: -0.25em;   /* no spacing after the last letter */
 }
 
 /* the well: sunk into the housing, dark inside, with a faint lit lip at its bottom edge */
 #to-record::before {
   content: '';
   position: absolute;
-  inset: 14px;
+  top: 12px;
+  left: 12px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: rgba(0,0,0,.3);
-  box-shadow: 
-    inset 0 1px 2px rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, .1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 1), inset 0 -1px 0px rgba(255, 255, 255, .1);
 }
 
 /* the red button: domed (light top left, dark bottom right), a soft highlight on its top edge, and a
@@ -285,19 +297,26 @@ li strong {
 #to-record::after {
   content: '';
   position: absolute;
-  inset: 22px;
+  top: 18px;
+  left: 18px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--rec);
   box-shadow: 
        0 2px 8px rgba(0, 0, 0, 0.5), 
-       inset 0 1px 1px rgba(255, 255, 255, 0.4), 
-       inset 0 -1px 1px rgba(0, 0, 0, 0.5);
-  transition: transform 0.1s, box-shadow 0.1s;
+       inset 0 1px 1px rgba(255, 255, 255, 0.3), 
+       inset 0 1px 0px rgba(255, 255, 255, 0.1), 
+       inset 0 -1px 1px rgba(0, 0, 0, 0.5),
+       inset 0 -1px 0px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.1s;
 }
 
 #to-record:active::after {
-  transform: translateY(1px) scale(0.96);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.7), inset 0 2px 2px rgba(255, 255, 255, 0.2), inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+  /* transform: scale(1.1); */
+  box-shadow:
+      inset 0 1px 1px rgba(0, 0, 0, 0.5), 
+      0 -2px 2px rgba(0, 0, 0, 0.35);
 }
 
 #to-record:focus-visible {
@@ -678,11 +697,27 @@ a.tile {
   background: var(--scrim-strong);
 }
 
+/* the timer, just above the bottom bar */
 #controls {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(var(--gap-m) + var(--safe-bottom));
+  bottom: calc(var(--safe-bottom) + var(--topbar));
+}
+
+/* The bottom bar mirrors the top bar: the same height and side padding, an icon button at either end,
+   the lens choice centred between them (the columns stay when one is hidden) */
+.bottombar {
+  position: absolute;
+  bottom: var(--safe-bottom);
+  left: 0;
+  right: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
+  align-items: center;
+  height: var(--topbar);
+  padding-inline: var(--gap-s);
 }
 
 #timer {
@@ -699,12 +734,9 @@ a.tile {
 }
 
 /* lens choice, centred */
-#controls nav {
-  display: flex;
-  justify-content: center;
-}
-
 #zoom {
+  grid-column: 2;
+  justify-self: center;
   display: flex;
   gap: var(--gap-s);
   padding: 4px;
@@ -727,20 +759,12 @@ a.tile {
   color: var(--text);
 }
 
-/* Sound on/off and the front/back switch: icon buttons in the bottom corners, mirroring the debug
-   toggle and the cross in the top bar (the iPhone home bar below them) */
-.corner-button {
-  position: absolute;
-  bottom: calc(var(--safe-bottom) + var(--gap-s));
-  z-index: 1;
-}
-
 #mute {
-  left: var(--gap-s);
+  grid-column: 1;
 }
 
 #flip {
-  right: var(--gap-s);
+  grid-column: 3;
 }
 
 /* the icon shows the current state: a speaker with waves, or crossed out when muted */
@@ -779,6 +803,7 @@ a.tile {
 
 .prose p {
   margin: var(--gap-s) 0;
+  color: var(--dim);
 }
 
 .prose a {
@@ -822,6 +847,174 @@ a.tile {
 #summary span {
   flex: 1;
   color: var(--dim);
+}
+
+/* A tile that is one link, without anything under its title: Setup tips */
+.tile-link .tile-label {
+  border-bottom: 0;
+}
+
+/* The welcome fills the screen: the top bar, the slides taking up the space, the dots, the button */
+#welcome:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+/* the slides, side by side, one in view, swiped sideways and settling on each (no scrollbar shown) */
+#slides {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: var(--gap-s);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+#slides::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  flex: 0 0 100%;
+  margin: 0;
+  padding: var(--gap-l);
+  overflow-y: auto;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.slide h2 {
+  margin: var(--gap-l) 0 var(--gap-s);
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.slide p {
+  margin: 0 0 var(--gap-s);
+  color: var(--dim);
+  line-height: 1.45;
+}
+
+.slide p a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* the drawings: lines like the icons'. Gold is her, red what to avoid, dim what's only there to place things */
+.art {
+  flex: none;
+  width: 100%;
+  max-height: 34dvh;
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.art .hero {
+  stroke: var(--gold);
+}
+
+.art .soft {
+  stroke: var(--dim);
+}
+
+.art .dashed {
+  stroke-dasharray: 3 5;
+  stroke-width: 1;
+}
+
+.art .no {
+  stroke: var(--danger);
+}
+
+.art text {
+  fill: var(--dim);
+  stroke: none;
+  font-size: 12px;
+}
+
+.welcome-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--row);
+  margin: var(--gap-s) 0;
+}
+
+#slide-dots {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  gap: var(--gap-s);
+  padding: var(--gap-m) 0;
+}
+
+#slide-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dim);
+  opacity: 0.4;
+}
+
+#slide-dots span.on {
+  background: var(--text);
+  opacity: 1;
+}
+
+#welcome-next {
+  flex: none;
+  width: 100%;
+  max-width: 240px;
+  margin: 0 auto;
+  min-height: var(--row);
+  box-shadow: var(--tile-shadow);
+}
+
+/* The picture of the record, shown before sharing: over a dark page, the cross top right, Share under it */
+#share-preview {
+  width: min(100vw - 2 * var(--gap-m), 420px);
+  padding: 0 var(--gap-m) var(--gap-m);
+  border: 0;
+  border-radius: var(--tile-radius);
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: var(--tile-shadow);
+}
+
+#share-preview::backdrop {
+  background: var(--scrim-strong);
+}
+
+#share-close {
+  display: flex;
+  margin: 0 calc(-1 * var(--gap-s)) 0 auto;
+}
+
+#share-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-m);
+  background: var(--bg);
+}
+
+#share-send {
+  width: 100%;
+  min-height: var(--row);
+  margin-top: var(--gap-m);
+  background: var(--tile);
+  color: var(--text);
+  box-shadow: var(--tile-shadow);
 }
 
 /* the record's row shares it: the whole row is the button, otherwise looking like the rows around it */
@@ -1037,15 +1230,21 @@ a.tile {
 
 [data-slide="in"]::view-transition-new(root) { animation-name: from-right; }
 [data-slide="up"]::view-transition-new(root) { animation-name: from-bottom; }
+[data-slide="drop"]::view-transition-new(root) { animation-name: from-top; }
 [data-slide="in"]::view-transition-old(root),
 [data-slide="up"]::view-transition-old(root),
+[data-slide="drop"]::view-transition-old(root),
+[data-slide="lift"]::view-transition-new(root),
 [data-slide="out"]::view-transition-new(root),
 [data-slide="down"]::view-transition-new(root) { animation: none; }
 [data-slide="out"]::view-transition-old(root) { animation-name: to-right; z-index: 1; }
 [data-slide="down"]::view-transition-old(root) { animation-name: to-bottom; z-index: 1; }
+[data-slide="lift"]::view-transition-old(root) { animation-name: to-top; z-index: 1; }
 
 @keyframes from-right { from { transform: translateX(100%); } }
 @keyframes to-right { to { transform: translateX(100%); } }
 @keyframes from-bottom { from { transform: translateY(100%); } }
 @keyframes to-bottom { to { transform: translateY(100%); } }
+@keyframes from-top { from { transform: translateY(-100%); } }
+@keyframes to-top { to { transform: translateY(-100%); } }
 

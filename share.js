@@ -5,7 +5,7 @@
 const SIZE = 1080, MARGIN = 80;
 const LINE = 1.2;   // line height
 // The tile: home's Record tile at SCALE times its size (.stat, .stat b, --tile-radius, --tile-shadow)
-const SCALE = 6, LABEL = 16 * SCALE, VALUE = 24 * SCALE, PAD = 18 * SCALE, RADIUS = 8 * SCALE, EDGE = 3;
+const SCALE = 6, VALUE = 24 * SCALE, PAD = 18 * SCALE, RADIUS = 8 * SCALE, EDGE = 3;
 const BY = 56, OUTSIDE = 44, GAP = 48;   // "by [name]"; the lines above and below the tile, and their distance
 const token = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const font = (weight, size) => `${weight} ${size}px Inter, system-ui, sans-serif`;
@@ -34,9 +34,10 @@ export async function recordCard({ time, date, name }) {
   const valueWidth = g.measureText(time).width;
   const bySize = by ? fit(g, by, BY, 400, room) : 0;
   const byWidth = by ? g.measureText(by).width : 0;
-  g.font = font(400, LABEL);
+  const labelSize = bySize || BY;   // "Record" as big as "by [name]"
+  g.font = font(400, labelSize);
   const tileWidth = Math.max(g.measureText('Record').width, valueWidth, byWidth) + 2 * PAD;
-  const tileHeight = 2 * PAD + (LABEL + valueSize + bySize) * LINE;
+  const tileHeight = 2 * PAD + (labelSize + valueSize + bySize) * LINE;
 
   // the tile in the very middle of the picture; above and below it, at the same distance, one line each
   const x = (SIZE - tileWidth) / 2, top = (SIZE - tileHeight) / 2;
@@ -66,7 +67,7 @@ export async function recordCard({ time, date, name }) {
 
   // inside it: the label, the time, and who holds it
   let y = top + PAD;
-  for (const [text, size, colour] of [['Record', LABEL, token('--dim')], [time, valueSize, token('--gold')], [by, bySize, token('--text')]]) {
+  for (const [text, size, colour] of [['Record', labelSize, token('--dim')], [time, valueSize, token('--gold')], [by, bySize, token('--text')]]) {
     if (!text) continue;
     line(text, 400, size, colour, y + size * LINE / 2);
     y += size * LINE;

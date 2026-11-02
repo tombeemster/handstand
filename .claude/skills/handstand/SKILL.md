@@ -55,7 +55,7 @@ Values that live in both `app.js` and `style.css` (keep them in step; each side'
 - **Chart:** two drawings at one scale, the fixed seconds labels and the scrolling plot. Their split is `L / W` in `renderChart` and `9.375%` in `#chart .seconds`.
 - **Swipe to delete:** `OPEN` (80 px) is the Delete button's width in `.row-delete`; the 200 ms wait before a long-swipe delete is the rows' transition.
 - **Segments:** the highlight's width in `.segments .thumb` is divided by the number of segments in `index.html` (now 2).
-- **Screen slides:** `DEPTH` in `app.js` decides the direction (deeper slides in from the right); the keyframes are in `style.css`. A new screen needs a depth.
+- **Screen slides:** `slideFor` in `app.js` decides the direction (the camera from the bottom, the profile from the top, deeper pages from the right, by `DEPTH`); the keyframes are in `style.css`. A new screen needs a depth.
 
 Shared sizes live in tokens, not per element: `--row` is the height of every row-shaped thing (list rows, tile headers, the segments, full-width buttons); every box is a `.tile`, with an extra class for its kind (`stat`, `day`, `setting`). Every screen starts with a `<header class="topbar">` (`--topbar` high: an optional `.icon-button` left, the `h1`, an optional `.icon-button` right; the columns follow from the order, so a new screen only writes the markup); every tappable icon is an `.icon-button` (`--tap` square, 20 px icon, 24 on the camera). Don't position icons one by one again.
 

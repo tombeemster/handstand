@@ -29,18 +29,22 @@ Dark, calm and restrained: a few tiles on a near-black page, no decoration. The 
 
 - **Inter.** Headings small, uppercase and letter-spaced; times in tabular figures so digits don't jump.
 - **Tiles:** every box is a `.tile` (background, radius, shadow, 8 px apart); an extra class says what kind: `stat` (Record, Average), `day` (a day's attempts), `setting` (a name, a switch, a description). The chart is a tile too. Lists live inside their tile, never on the page background.
-- **No tab bar.** Home has one Record button fixed at the bottom, drawn like a camera's REC button (a red domed button in a dark recessed housing, the one skeuomorphic element) and a profile icon top right. Record closes with a cross top right. Profile is titled with her name once set, and has two segments: Attempts (one tile per day with its 3 longest attempts) and Settings (the summary with her editable name on top, then the settings). A day's page lists all of a day's attempts, longest first. (A tab bar for Home, Record and Log was used until 31 October; a grid of small day tiles was tried and dropped.)
-- **Record screen:** the camera fills the whole screen. Text on the camera sits on a dark see-through backing; the timer is big and centred; the debug toggle is top left, the cross top right; mute and camera flip sit in the bottom corners, mirroring the icons at the top; the lens choice is under the timer.
+- **No tab bar.** Home has one Record button fixed at the bottom, drawn like a camera's REC button (a pill with a red domed button in a recess and the letters REC, the one skeuomorphic element) and a profile icon top right. Record and Profile close with a cross top right; pages below Profile go back with an arrow top left. Profile is titled with her name once set, and has two segments: Attempts (one tile per day with its 3 longest attempts) and Settings (the summary with her editable name on top, then the settings). A day's page lists all of a day's attempts, longest first. (A tab bar for Home, Record and Log was used until 31 October; a grid of small day tiles was tried and dropped.)
+- **Record screen:** the camera fills the whole screen. Text on the camera sits on a dark see-through backing; the timer is big and centred; the debug toggle is top left, the cross top right; a bottom bar mirrors the top bar: mute on the left, camera flip on the right, the lens choice (back camera) centred between them; the timer sits just above it.
 
 ## Motion
 
-- **Screens slide, by depth:** the camera rises from the bottom and drops back down; a deeper page (home → profile → a day's page) slides in from the right and back out to the right. 0.3 s, no fades.
+- **Screens slide:** the camera rises from the bottom and drops back down; the profile comes down from the top and goes back up; a page below the profile (a day's page, privacy) slides in from the right and back out to the right. 0.3 s, no fades.
 - **Segments:** the highlight slides to the segment tapped.
 - **Reduced motion:** nothing slides.
 
 ## Top bar
 
 Every screen starts with the same top bar (`.topbar`, 64 px): an icon button on the left (back, or the debug toggle on the camera), the title centred, an icon button on the right (the profile on home, the cross on the camera). Each side is optional; everything is centred vertically and a long title is cut off.
+
+## Welcome
+
+Three slides on first opening an empty app, and from Settings (Setup tips): set up the phone, give it a clear view, it stays on this phone. One tile per slide, swiped sideways, with dots and a gold button. The drawings use the icons' lines: gold is her, red what to avoid, dim what only places things.
 
 ## Icons
 

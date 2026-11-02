@@ -38,7 +38,7 @@
     <ul id="highs"></ul>
   </a>
   <!-- the way to the record screen: a camera-style REC button fixed at the bottom of home (drawn in CSS) -->
-  <a id="to-record" href="#record" aria-label="Record"></a>
+  <a id="to-record" href="#record" aria-label="Record"><span aria-hidden="true">REC</span></a>
 </section>
 
 <section id="record" hidden>
@@ -60,23 +60,22 @@
   <div id="notice" hidden></div>
   <div id="controls">
     <div id="timer" role="button" aria-label="Timer: tap to start or stop timing by hand">0.00</div>
-    <!-- lens choice, back camera only -->
-    <nav>
-      <div id="zoom" hidden>
-        <button data-zoom="0.5" aria-label="Wide lens, 0.5 times">0.5×</button>
-        <button data-zoom="1" aria-label="Normal lens, 1 times">1×</button>
-      </div>
-    </nav>
   </div>
-  <!-- sound on/off and the front/back switch, in the bottom corners like the icons at the top.
-       Icons: Lucide volume-2, volume-x, switch-camera -->
-  <button id="mute" class="icon-button corner-button" aria-label="Sound" aria-pressed="false">
-    <svg class="sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/></svg>
-    <svg class="sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>
-  </button>
-  <button id="flip" class="icon-button corner-button" aria-label="Switch between front and back camera" hidden>
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
-  </button>
+  <!-- bottom bar, like the top bar: sound on/off on the left, the lens choice in the middle (back camera
+       only), the front/back switch on the right. Icons: Lucide volume-2, volume-x, switch-camera -->
+  <div class="bottombar">
+    <button id="mute" class="icon-button" aria-label="Sound" aria-pressed="false">
+      <svg class="sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/></svg>
+      <svg class="sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><line x1="22" x2="16" y1="9" y2="15"/><line x1="16" x2="22" y1="9" y2="15"/></svg>
+    </button>
+    <div id="zoom" hidden>
+      <button data-zoom="0.5" aria-label="Wide lens, 0.5 times">0.5×</button>
+      <button data-zoom="1" aria-label="Normal lens, 1 times">1×</button>
+    </div>
+    <button id="flip" class="icon-button" aria-label="Switch between front and back camera" hidden>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></svg>
+    </button>
+  </div>
 </section>
 
 <!-- one day of the log, all attempts in time order (#log/2026-10-23). Back icon: Lucide arrow-left -->
@@ -93,11 +92,11 @@
 </section>
 
 <!-- the Profile page, opened from the icon on home: the attempts (#profile, also #profile/log) and the
-     settings (#profile/settings), one segment each. Back icon: Lucide arrow-left -->
+     settings (#profile/settings), one segment each. Closed with the cross, top right. Icon: Lucide x -->
 <section id="profile" hidden>
   <header class="topbar">
-    <a class="icon-button" href="#home" aria-label="Back to home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></a>
     <h1 id="profile-title">Profile</h1>
+    <a id="close-profile" class="icon-button" href="#home" aria-label="Close the profile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></a>
   </header>
   <nav class="segments" aria-label="Profile">
     <span class="thumb" aria-hidden="true"></span>
@@ -127,12 +126,16 @@
     <p class="setting-note">Include manual timing in averages and records.</p>
   </div>
   <div class="tile setting">
-    <label class="tile-label tile-header">Share anonymous totals <input type="checkbox" role="switch" class="switch" id="share-summaries"></label>
+    <label class="tile-label tile-header">Share sessions <input type="checkbox" role="switch" class="switch" id="share-summaries"></label>
     <p class="setting-note">
       Shares totals of each session. Only counts and times, no names or ids.
       <a href="#privacy">Privacy statement</a>
     </p>
   </div>
+  <!-- the welcome again. Arrow icon: Lucide arrow-right -->
+  <a class="tile tile-link" href="#welcome">
+    <div class="tile-label tile-header">Watch the welcome tutorial<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+  </a>
   </div>
 </section>
 
@@ -141,24 +144,26 @@
      Keep it in step with what the app does: summary.js builds exactly what is sent. -->
 <section id="privacy" hidden>
   <header class="topbar">
-    <a class="icon-button" href="#profile/settings" aria-label="Back to settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></a>
+    <a id="privacy-back" class="icon-button" href="#profile/settings" aria-label="Back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg></a>
     <h1>Privacy</h1>
   </header>
   <article class="prose">
-    <h2>The camera</h2>
+    <h2>Camera</h2>
     <p>The camera is only used on this phone, while you record. Nothing is filmed, saved or sent.</p>
-    <h2>Your attempts</h2>
-    <p>Your attempts, what wasn't timed and the name you give stay on this phone. Reset log deletes the attempts and what wasn't timed; Export log is your only backup.</p>
+    <h2>Attempts and settings</h2>
+    <p>Your attempts, what wasn't timed and the name you give stay on this phone. 'Delete all attempts' clears the entire log.</p>
+    <p>Make sure to use 'Export (.csv)' to back up your attempts data.</p>
     <h2>Sharing a record</h2>
     <p>Tapping the record in your summary makes a picture on this phone, with the record, the date and the name if you gave one. It only goes where you send it.</p>
-    <h2>Sharing totals</h2>
-    <p>Off by default. If you turn it on, the app sends a short summary after each session: the date, how many attempts and misses, and the average, best and record times. No name, no account, no ids, no time of day. Nothing links a summary to you, so we can't find or delete yours later.</p>
+    <h2>Sharing sessions</h2>
+    <p>Off by default. If you turn it on, the app sends a short summary after each session: the date, how many attempts and misses, and the average, best and record times.</p>
+    <p>No name, no account, no ids, no time of day. Nothing links a summary to you, so we can't find or delete yours later.</p>
     <h2>Where it goes</h2>
-    <p>Through Cloudflare to Supabase, stored in Frankfurt, Germany. Cloudflare sees your IP address to deliver it, but it isn't saved.</p>
+    <p>Through Cloudflare to Supabase, stored in Europe. Cloudflare sees your IP address to deliver it, but it isn't saved.</p>
     <h2>No tracking</h2>
     <p>No cookies, no ads, no tracking tools.</p>
     <h2>Filming</h2>
-    <p>Only film your own child, with her OK.</p>
+    <p>Never film athletes without consent.</p>
     <h2>Questions</h2>
     <p><a href="mailto:tombeemster@proton.me">tombeemster@proton.me</a></p>
     <h2>What gets sent</h2>
@@ -166,6 +171,80 @@
     <pre id="sent-json"></pre>
   </article>
 </section>
+
+<!-- the welcome (#welcome): three slides on first opening an empty app, and from Settings. Icon: Lucide x.
+     The drawings are made of the same lines as the icons; gold is her. -->
+<section id="welcome" hidden>
+  <header class="topbar">
+    <h1>Welcome</h1>
+    <button id="welcome-close" class="icon-button" aria-label="Close the welcome"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  </header>
+  <div id="slides">
+    <article class="slide">
+      <svg class="art" viewBox="0 0 240 170" aria-hidden="true">
+        <path class="soft" d="M16 116h208"/>
+        <path class="soft dashed" d="M62 54 206 12M62 54l144 94"/>
+        <path d="M52 74 36 116M52 74l16 42M52 74v42"/>
+        <rect x="42" y="34" width="20" height="40" rx="3"/>
+        <circle cx="52" cy="41" r="1.5"/>
+        <g class="hero">
+          <path d="M168 116l10-22 10 22M178 94V64M178 64l-6-34M178 64l6-34"/>
+          <circle cx="178" cy="103" r="6"/>
+        </g>
+        <path class="soft" d="M52 146h126M58 142l-6 4 6 4M172 142l6 4-6 4"/>
+        <text x="115" y="164" text-anchor="middle">2–4 m</text>
+      </svg>
+      <h2>Set up the phone</h2>
+      <p>Upright on a tripod, 2–4 m away and not low down. Keep the whole body in view, feet to raised hands.</p>
+      <p>Your phone will ask for the camera: that's what times the handstand.</p>
+    </article>
+    <article class="slide">
+      <svg class="art" viewBox="0 0 240 150" aria-hidden="true">
+        <path class="soft" d="M16 126h208"/>
+        <circle cx="52" cy="38" r="10"/>
+        <path d="M52 18v4M52 54v4M32 38h4M68 38h4M38 24l3 3M63 49l3 3M38 52l3-3M63 27l3-3"/>
+        <g class="hero">
+          <path d="M112 126l10-22 10 22M122 104V74M122 74l-6-34M122 74l6-34"/>
+          <circle cx="122" cy="113" r="6"/>
+        </g>
+        <rect x="176" y="110" width="40" height="16" rx="6"/>
+        <rect x="184" y="94" width="26" height="16" rx="6"/>
+        <path class="no" d="M172 88l48 42M220 88l-48 42"/>
+      </svg>
+      <h2>Lighting and no clutter</h2>
+      <p>Good light and a plain background help tracking the handstand. Clear away anything that looks even remotely similar to a person.</p>
+      <p>If it's too dark, a warning shows at the top of the camera.</p>
+    </article>
+    <article class="slide">
+      <svg class="art" viewBox="0 0 240 150" aria-hidden="true">
+        <rect x="100" y="24" width="40" height="84" rx="6"/>
+        <path d="M116 100h8"/>
+        <g class="hero">
+          <rect x="110" y="62" width="20" height="16" rx="2"/>
+          <path d="M114 62v-6a6 6 0 0 1 12 0v6"/>
+        </g>
+        <rect x="36" y="56" width="24" height="20" rx="3"/>
+        <path d="M60 63l12-6v18l-12-6"/>
+        <path class="no" d="M34 90l40-48"/>
+        <path d="M176 76a9 9 0 0 1 1-18 13 13 0 0 1 25 3 8 8 0 0 1-1 15z"/>
+        <path class="no" d="M170 90l40-48"/>
+      </svg>
+      <h2>It stays on this phone</h2>
+      <p>No video is ever stored or uploaded. Sharing session totals is off unless you turn it on.</p>
+      <label class="welcome-switch">Share sessions <input type="checkbox" role="switch" class="switch" id="welcome-share"></label>
+      <p><a href="#privacy">Privacy statement</a></p>
+    </article>
+  </div>
+  <div id="slide-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+  <button id="welcome-next">Next</button>
+</section>
+
+<!-- the record's picture, to look at before choosing where it goes. Icon: Lucide x -->
+<dialog id="share-preview" aria-label="Share her record">
+  <button id="share-close" class="icon-button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  <img id="share-image" alt="The picture of her record">
+  <button id="share-send">Share</button>
+</dialog>
 
 <script type="module" src="app.js"></script>
 </body>

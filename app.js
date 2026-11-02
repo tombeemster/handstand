@@ -59,8 +59,8 @@ function save() {
   render();
 }
 
-// When an attempt started, day first: 18/10/2026 – 07:16:09
-const stamp = a => `${a.started_at.slice(8, 10)}/${a.started_at.slice(5, 7)}/${a.started_at.slice(0, 4)} – ${a.started_at.slice(11)}`;
+// When an attempt started, short: 1 Nov – 07:16:09 (en-GB: day first, whatever the browser's language)
+const stamp = a => `${new Date(a.started_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })} – ${a.started_at.slice(11)}`;
 
 // A day as its tile title: "Friday 23 October", in the browser's language
 const dayLabel = day => new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
@@ -210,9 +210,9 @@ function deleteAttempt(id) {
 
 // ---- screens, no tab bar: #home (or none) with the Record button; #record, closed with its cross;
 // #profile (the attempts, also #profile/log) and #profile/settings, from the icon on home; #privacy, from
-// the share setting; #log/2026-10-23,
+// the share setting; #welcome, on first opening an empty app and from the settings; #log/2026-10-23,
 // one day's page, from the log. The camera is on only on #record. ----
-const SCREENS = ['home', 'record', 'day', 'profile', 'privacy'];
+const SCREENS = ['home', 'record', 'day', 'profile', 'privacy', 'welcome'];
 let screen = 'home', day = null, segment = 'log';   // on view now
 
 // Draws the screen on view (the record screen draws itself, frame by frame)
@@ -220,18 +220,21 @@ function render() {
   if (screen === 'home') renderHome();
   if (screen === 'day') renderDay(day);
   if (screen === 'profile') { renderProfile(); renderLog(); }
+  if (screen === 'welcome') renderWelcome();
   if (screen === 'privacy') renderPrivacy();
 }
 
-// Moving between screens slides: the camera up from the bottom (and back down), a deeper page in from
-// the right (home → profile → a day's page) and back out to the right. Going by depth, not by which
-// button was tapped, so the phone's own back gesture slides the right way too. Uses the browser's view
+// Moving between screens slides: the camera up from the bottom (and back down), the profile down from the
+// top (and back up), a page below the profile in from the right and back out to the right. Going by the
+// screens, not by which button was tapped, so the phone's own back gesture slides the right way too. Uses the browser's view
 // transitions (iPhone Safari 18+); without them, or with reduced motion, screens just switch.
-const DEPTH = { home: 0, profile: 1, day: 2, privacy: 2 };
+const DEPTH = { home: 0, profile: 1, welcome: 1.5, day: 2, privacy: 2 };
 function slideFor(from, to) {
   if (from === to) return null;
   if (to === 'record') return 'up';
-  if (from === 'record') return 'down';
+  if (from === 'record' || (from === 'welcome' && to === 'home')) return 'down';
+  if (from === 'home' && to === 'profile') return 'drop';
+  if (from === 'profile' && to === 'home') return 'lift';
   return DEPTH[to] > DEPTH[from] ? 'in' : 'out';
 }
 const calm = matchMedia('(prefers-reduced-motion: reduce)');
@@ -240,10 +243,14 @@ let routed = false;   // the first screen, on opening the app, doesn't slide in
 function route() {
   const [name, part] = location.hash.slice(1).split('/');
   if (name === 'log' && !part) return location.replace('#profile/log');   // the log's old address: now on the profile
+  // the very first time, with nothing logged yet: the welcome first (an app already in use goes straight on)
+  if (!routed && (!name || name === 'home') && !recall(WELCOME_KEY, false) && !attempts.length && !notTimed.length) return location.replace('#welcome');
   const from = screen;
   screen = name === 'log' ? 'day' : SCREENS.includes(name) ? name : 'home';
   day = name === 'log' ? part : null;
   segment = part === 'settings' ? 'settings' : 'log';
+  if (screen === 'welcome' && from !== 'privacy') openWelcome(from);
+  if (screen === 'privacy' && from !== 'privacy') $('privacy-back').hash = from === 'welcome' ? '#welcome' : '#profile/settings';
   const show = () => {
     for (const s of SCREENS) $(s).hidden = s !== screen;
     const links = [...document.querySelectorAll('.segments a')];
@@ -324,9 +331,43 @@ const METRICS_URL = 'https://handstand-metrics.tombeemster.workers.dev';
 const SHARE_KEY = 'handstand.shareSummaries';
 let shareSummaries = !!recall(SHARE_KEY, false);
 let session = null, lastSummary = null;   // the session under way: { from, misses: { reason: count }, fails }; the last one's summary
-$('share-summaries').onchange = e => {
+// The same setting has a switch in the settings and on the welcome's last slide
+$('share-summaries').onchange = $('welcome-share').onchange = e => {
   shareSummaries = e.target.checked;
   remember(SHARE_KEY, shareSummaries);
+};
+
+// ---- welcome: three slides, swiped sideways or with the button. Closing goes back to where it was opened
+// from, and it won't open by itself again.
+const WELCOME_KEY = 'handstand.welcomed';
+let welcomeBack = '#home', slideAt = 0;
+function openWelcome(from) {   // not when coming back from the privacy statement: then it's still on its slide
+  welcomeBack = from === 'profile' ? '#profile/settings' : '#home';
+  slideAt = 0;
+}
+const slideLeft = i => $('slides').children[i].offsetLeft - $('slides').children[0].offsetLeft;
+const lastSlide = () => $('slides').children.length - 1;
+function showSlide() {
+  [...$('slide-dots').children].forEach((dot, i) => dot.classList.toggle('on', i === slideAt));
+  $('welcome-next').textContent = slideAt >= lastSlide() ? 'Start' : 'Next';
+}
+function renderWelcome() {
+  $('welcome-share').checked = shareSummaries;
+  $('slides').scrollLeft = slideLeft(slideAt);
+  showSlide();
+}
+$('slides').onscroll = () => {
+  slideAt = Math.round($('slides').scrollLeft / (slideLeft(1) || 1));
+  showSlide();
+};
+function closeWelcome() {
+  remember(WELCOME_KEY, true);
+  location.hash = welcomeBack;
+}
+$('welcome-close').onclick = closeWelcome;
+$('welcome-next').onclick = () => {
+  if (slideAt >= lastSlide()) return closeWelcome();
+  $('slides').scrollTo({ left: slideLeft(slideAt + 1), behavior: calm.matches ? 'auto' : 'smooth' });
 };
 
 // ---- home ----
@@ -480,7 +521,19 @@ function prepareCard() {
 $('summary').onclick = async e => {
   if (!e.target.closest('#share-record')) return;
   prepareCard();
-  deliver(await card.file);
+  $('share-preview').showModal();
+  $('share-image').src = URL.createObjectURL(await card.file);
+};
+// The preview: Share opens the share sheet (its own tap, as iPhone wants); closed by the cross or beside it
+$('share-send').onclick = async () => {
+  await deliver(await card.file);
+  $('share-preview').close();
+};
+$('share-close').onclick = () => $('share-preview').close();
+$('share-preview').onclick = e => { if (e.target === $('share-preview')) $('share-preview').close(); };
+$('share-preview').onclose = () => {
+  URL.revokeObjectURL($('share-image').src);
+  $('share-image').removeAttribute('src');
 };
 
 // Import, on an empty log only (see renderLog): an exported file back in, e.g. on a new phone
