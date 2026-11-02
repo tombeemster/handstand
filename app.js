@@ -110,6 +110,21 @@ function renderLog() {
     </div>`;
 }
 
+// Something not timed as a list row: its date and time, the reason as a red tag; an attempt under 1 s also
+// has its duration, like any row. The stored reasons are shown as they are (MISS_REASONS in detect.js).
+// OLD_REASONS: the longer wordings used until 2 November, still in rows stored or exported before then.
+const OLD_REASONS = {
+  'not seen standing first': 'not seen standing',
+  'lock on someone else': 'lock-on issue',
+  'body not vertical': 'not vertical',
+  'not steady 3 frames in a row': 'not steady',
+};
+const failId = f => `fail ${f.started_at} ${f.why}`;   // for the row's swipe to delete; they have no id of their own
+function failRow(f) {
+  const short = f.why.match(/^under 1s \(([\d.]+)s\)|^timed ([\d.]+) s/)?.slice(1).find(Boolean);
+  return `<li data-id="${failId(f)}"><time>${stamp(f)}</time><small class="is-fail">${short ? 'under 1s' : OLD_REASONS[f.why] ?? f.why}</small>${short ? `<strong>${short}s</strong>` : ''}${DELETE}</li>`;
+}
+
 // A day's own page: all its attempts, longest first. Records at their time are marked "best" (gold);
 // the day's longest (the first), if it isn't one of those, "top" (outlined). Under them, dim, what the
 // app saw that day but didn't time, newest first, with the reason.
@@ -119,7 +134,7 @@ function renderDay(day) {
   $('day-title').textContent = dayLabel(day);
   const missed = notTimedOn(day);
   $('day-list').innerHTML = (items.map((a, i) => row(a, rec.ids.has(a.id) ? 'best' : i === 0 ? 'top' : '', rec, DELETE)).join('')
-    + missed.map(f => `<li><time>${f.started_at.slice(11)} · not timed</time><small>${f.why}</small></li>`).join(''))
+    + missed.map(failRow).join(''))
     || '<li>No attempts on this day.</li>';
   $('clear-day').hidden = !items.length && !missed.length;
 }
@@ -188,6 +203,8 @@ $('day-list').onclick = e => {
 };
 function deleteAttempt(id) {
   attempts = attempts.filter(a => a.id !== id);
+  notTimed = notTimed.filter(f => failId(f) !== id);
+  saveNotTimed();
   save();
 }
 
@@ -699,7 +716,7 @@ const detector = createDetector({
     // announced once the attempt can no longer resume (see MERGE_LATE_MS), so a short loss of
     // tracking isn't announced as a landing
     const ms = endAttempt(startTs, endTs, 'auto', flagged, MERGE_LATE_MS);
-    if (ms < MIN_MS) noteMiss(startTs, `timed ${fmt(ms)} s, under 1 s`, true);
+    if (ms < MIN_MS) noteMiss(startTs, `under 1s (${fmt(ms)}s)`, true);
     $('timer').textContent = fmt(ms);
   },
   onMiss(ts, why) {

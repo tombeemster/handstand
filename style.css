@@ -231,6 +231,10 @@ li strong {
   color: var(--gold);
 }
 
+.is-fail{
+  color: var(--danger);
+}
+
 
 /* Home, the profile and a day's page are scrolling pages; home ends above the Record button */
 #home,

@@ -6,10 +6,10 @@ export const APP_VERSION = '1.0.0';
 const MAX_MS = 600000;   // 10 minutes: no duration sent is longer (the Worker checks the same)
 // Each near miss reason of detect.js (MISS_REASONS) and the count it's sent as
 export const MISS_FIELDS = {
-  'lock on someone else': 'miss_other_person',
-  'not steady 3 frames in a row': 'miss_unsteady',
-  'body not vertical': 'miss_not_vertical',
-  'not seen standing first': 'miss_no_standing',
+  'lock-on issue': 'miss_other_person',
+  'not steady': 'miss_unsteady',
+  'not vertical': 'miss_not_vertical',
+  'not seen standing': 'miss_no_standing',
 };
 
 // log: every attempt (newest first, as stored); from: the session's start as local ISO time

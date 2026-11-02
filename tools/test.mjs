@@ -22,7 +22,7 @@ assert.equal(s.avg_ms, 1000, '1000.33 rounds down');
 // Manual attempts are counted but never enter the times, even with the setting on
 const log = [attempt('2026-11-01T10:05:00', 2400), attempt('2026-11-01T10:04:00', 9000, 'manual'), attempt('2026-11-01T10:03:00', 1501), before];
 for (const countManual of [false, true]) {
-  s = summary(log, { misses: { 'body not vertical': 2 }, fails: 1, countManual });
+  s = summary(log, { misses: { 'not vertical': 2 }, fails: 1, countManual });
   assert.equal(s.attempts_total, 3);
   assert.equal(s.timed_auto, 2);
   assert.equal(s.timed_manual, 1);
@@ -37,13 +37,13 @@ s = summary([attempt('2026-11-01T10:04:00', 9000, 'manual')]);
 assert.deepEqual([s.avg_ms, s.best_ms, s.record_ms], [null, null, null]);
 
 // Misses alone are a session too
-s = summary([], { misses: { 'not seen standing first': 1 } });
+s = summary([], { misses: { 'not seen standing': 1 } });
 assert.equal(s.near_misses, 1);
 assert.equal(s.attempts_total, 0);
 
 // Near misses by reason, adding up; every reason of detect.js has its count
 assert.deepEqual(Object.keys(MISS_FIELDS).sort(), [...MISS_REASONS].sort());
-s = summary([], { misses: { 'lock on someone else': 1, 'not steady 3 frames in a row': 2, 'body not vertical': 3, 'not seen standing first': 4 } });
+s = summary([], { misses: { 'lock-on issue': 1, 'not steady': 2, 'not vertical': 3, 'not seen standing': 4 } });
 assert.deepEqual([s.near_misses, s.miss_other_person, s.miss_unsteady, s.miss_not_vertical, s.miss_no_standing], [10, 1, 2, 3, 4]);
 
 // Durations are capped at 10 minutes
@@ -65,7 +65,7 @@ assert.equal(back.skipped, 0);
 assert.deepEqual(parseCsv('﻿' + toCsv(log).replace(/\n/g, '\r\n')).attempts, log, 'BOM and Windows line ends');
 
 // CSV: what wasn't timed goes along, in time order, comma and all; apart from the attempts when read back
-const missed = [{ started_at: '2026-11-01T10:05:30', why: 'timed 0.80 s, under 1 s' }, { started_at: '2026-11-01T10:03:30', why: 'body not vertical' }];
+const missed = [{ started_at: '2026-11-01T10:05:30', why: 'under 1s (0.80s)' }, { started_at: '2026-11-01T10:03:30', why: 'not vertical' }];
 const withMissed = toCsv(log, missed);
 assert.deepEqual(withMissed.split('\n').slice(1).map(l => l.split(',')[1]),
   ['2026-11-01T10:05:30', '2026-11-01T10:05:00', '2026-11-01T10:04:00', '2026-11-01T10:03:30', '2026-11-01T10:03:00', '2026-10-30T18:00:00']);
@@ -73,6 +73,9 @@ const backBoth = parseCsv(withMissed);
 assert.deepEqual(backBoth.attempts, log);
 assert.deepEqual(backBoth.notTimed, missed);
 assert.equal(backBoth.skipped, 0);
+
+// CSV: the reason wordings from before still read, comma and all
+assert.equal(parseCsv(`${withMissed.split('\n')[0]}\n,2026-01-01T10:00:00,,not_timed,false,"timed 0.80 s, under 1 s"`).notTimed[0].why, 'timed 0.80 s, under 1 s');
 
 // CSV: a file from before this column still reads
 const oldFile = 'id,started_at,duration_ms,method,flagged\nabc,2026-01-01T10:00:00,1500,manual,true\n';

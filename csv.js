@@ -30,7 +30,7 @@ export function parseCsv(text) {
     const [id, started_at, duration, method, flagged, ...rest] = line.trim().split(',');
     const why = rest.join(',').replace(/^"|"$/g, '');
     const duration_ms = Number(duration);
-    if (method === 'not_timed' && validTime(started_at) && /^[a-z0-9 .,]{1,60}$/i.test(why)) {
+    if (method === 'not_timed' && validTime(started_at) && /^[a-z0-9 .,()-]{1,60}$/i.test(why)) {
       notTimed.push({ started_at, why });
     } else if (/^[a-z0-9]{1,20}$/i.test(id) && validTime(started_at)
       && Number.isInteger(duration_ms) && duration_ms > 0 && duration_ms <= MAX_MS

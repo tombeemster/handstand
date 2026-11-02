@@ -66,7 +66,7 @@ export function armsUp(lm) {
 // Near misses: she was seen upside down for at least MISS_MS but no attempt started. The reason is the
 // furthest check she got to (by MISS_REASONS order), so a live session shows which rule cost an attempt.
 const MISS_MS = 500;
-export const MISS_REASONS = ['lock on someone else', 'not steady 3 frames in a row', 'body not vertical', 'not seen standing first'];
+export const MISS_REASONS = ['lock-on issue', 'not steady', 'not vertical', 'not seen standing'];
 
 // events: onStart(ts, resumed), onEnd(startTs, endTs, flagged), onMiss(ts, reason)
 // resumed: the previous attempt continues, so whatever it logged should go
@@ -176,7 +176,7 @@ export function createDetector({ onStart, onEnd, onMiss = () => {} }) {
       const inverted = ordered && upright(lm);
       invRun = inverted ? invRun + 1 : 0;
       trackMiss(ts, ordered || othersUpsideDown,
-        inverted ? 'not steady 3 frames in a row' : ordered ? 'body not vertical' : 'lock on someone else');
+        inverted ? 'not steady' : ordered ? 'not vertical' : 'lock-on issue');
       if (invRun >= CONFIRM) {
         // backdate to the first frame the wrists were already planted where they are now
         // (frames without wrists are skipped: the model drops single frames during a kick-up)
@@ -196,7 +196,7 @@ export function createDetector({ onStart, onEnd, onMiss = () => {} }) {
           startTs = resumed ? last.start : t; seenTs = ts; downRun = 0;
           missFrom = missWhy = null;
           onStart(startTs, resumed);
-        } else trackMiss(ts, true, 'not seen standing first');
+        } else trackMiss(ts, true, 'not seen standing');
       }
     } else {
       // Head above the hips mid-attempt: the model has fitted her the wrong way up (after a dropped

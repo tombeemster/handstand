@@ -15,7 +15,7 @@ const log = [
   { started_at: `${today}T10:03:00`, duration_ms: 1501, method: 'auto' },
   { started_at: '2026-01-01T18:00:00', duration_ms: 5200, method: 'auto' },
 ];
-const good = sessionSummary({ log, from: `${today}T10:00:00`, misses: { 'body not vertical': 2 }, fails: 1, countManual: false });
+const good = sessionSummary({ log, from: `${today}T10:00:00`, misses: { 'not vertical': 2 }, fails: 1, countManual: false });
 
 let sent = [];
 let supabaseOk = true;
@@ -53,7 +53,7 @@ for (const [name, body, status] of cases) {
 }
 
 // A session with only misses: no times at all, still valid
-const onlyMisses = sessionSummary({ log, from: `${today}T23:59:59`, misses: { 'not seen standing first': 3 }, fails: 0, countManual: true });
+const onlyMisses = sessionSummary({ log, from: `${today}T23:59:59`, misses: { 'not seen standing': 3 }, fails: 0, countManual: true });
 assert.equal(onlyMisses.avg_ms, null);
 assert.equal(valid(onlyMisses), true, 'misses only');
 

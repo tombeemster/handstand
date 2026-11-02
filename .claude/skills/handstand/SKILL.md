@@ -20,10 +20,10 @@ Read `product.md` before any product decision (the job, principles, scope, decis
 - `detect.js`: **all** detection rules, with no page and no clock. Its comments hold every threshold, why it has that value, and what was tried and dropped. Those comments are the source of truth: don't repeat the numbers elsewhere.
 - `app.js`: screens and routing (`#home`, `#record`, `#profile` = All attempts (also `#profile/log`), `#profile/settings` (where the profile icon goes), `#privacy`, `#log/<date>`; no tab bar, and old `#log` links go to `#profile/log`); stats read `counted()`, never `attempts`, so the manual timing setting applies everywhere; log and chart, settings, camera, sound and speech.
 - `share.js`: draws the record picture on a canvas (`prepareCard` in `app.js` draws it ahead: iPhone only allows sharing straight after a tap).
-- `csv.js`: the export format, written and read in one place (every imported field is checked: the values end up in the page).
+- `csv.js`: the export format, attempts and not-timed rows, written and read in one place (every imported field is checked: the values end up in the page; a new character in a reason must pass its check too).
 - `summary.js`: the anonymous session summary, a pure function (testable in Node). What it puts in must match the privacy page in `index.html`, which shows its output, and `valid` in `worker/index.js`.
 - `worker/`: the Cloudflare Worker (and `schema.sql`) that stores the summaries in Supabase. The app imports its `valid`, so there's one set of rules. After changing `index.js`, the maker redeploys with `npx wrangler deploy`; the key is a Worker secret, never in this repo.
-- Tests: `node tools/test.mjs` (summary and CSV), `node worker/test.mjs` (the Worker).
+- Tests: `node tools/test.mjs` (summary and CSV), `node worker/test.mjs` (the Worker), `bash worker/test-live.sh <url>` (the deployed Worker; run it yourself in Git Bash, PowerShell has no `bash`, and it stores one row with `app_version` 0.0.0 to delete afterwards).
 - `style.css`: tokens first (`:root` holds every value; see `design.md` for their meaning).
 - `tools/replay.py` + `tools/replay.mjs`: Python finds the poses in recorded videos (cached in `tools/.cache`), Node runs them through the real `detect.js`. One copy of the rules.
 
@@ -61,6 +61,13 @@ Shared sizes live in tokens, not per element: `--row` is the height of every row
 
 Touch traps: a sideways gesture needs `touch-action: pan-y` on the row so up and down still scroll, and swipe or scroll is decided on the first 8 px of movement. Respect `prefers-reduced-motion` for anything that moves.
 
+## Analytics and not-timed rows
+
+- **A new near-miss reason touches five places:** `MISS_REASONS` in `detect.js`, `MISS_FIELDS` in `summary.js`, `MISSES` in `worker/index.js`, a column in `schema.sql` (and an `alter table` for the live table), and the tests. `OLD_REASONS` in `app.js` only maps wordings of rows already stored or exported.
+- **Deploy in this order:** table change in Supabase → `npx wrangler deploy` → push the app. The Worker refuses extra or missing fields, so the other order loses summaries.
+- **Supabase has no ids on purpose:** its Table Editor can't delete rows; use `delete ... where ...` in the SQL Editor. The maker pastes keys and runs SQL; a key never goes in the chat or the repo.
+- **Before concluding something fails on the phone, check the build:** a running app keeps its old code until it's fully closed and reopened, and GitHub Pages caches files for 10 minutes. A whole round of lock tests failed for that reason alone.
+
 ## Test data
 
-Give the maker console snippets that write `handstand.attempts` in localStorage, and always keep a one-time backup (`handstand.attempts.backup`) plus a restore snippet. Real data: `data/load-real-data.js` loads the newest export in `data/` (by the date in its name) when pasted on localhost.
+Give the maker console snippets that write `handstand.attempts` or `handstand.notTimed` in localStorage, and always keep a one-time backup (`<key>.backup`) plus a restore snippet. Real data: `data/load-real-data.js` loads the newest export in `data/` (by the date in its name) when pasted on localhost.
