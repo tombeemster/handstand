@@ -942,12 +942,15 @@ a.tile {
   font-size: 12px;
 }
 
-.welcome-switch {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: var(--row);
-  margin: var(--gap-s) 0;
+/* the Share sessions tile on the last slide: the settings' own, not the slide's text */
+.slide .setting {
+  flex: none;
+  margin: var(--gap-s) 0 0;
+}
+
+.slide .setting-note {
+  margin: 0;
+  line-height: inherit;
 }
 
 #slide-dots {

@@ -172,14 +172,19 @@
   </article>
 </section>
 
-<!-- the welcome (#welcome): three slides on first opening an empty app, and from Settings. Icon: Lucide x.
+<!-- the welcome (#welcome): an intro and three slides on first opening an empty app, and from Settings. Icon: Lucide x.
      The drawings are made of the same lines as the icons; gold is her. -->
 <section id="welcome" hidden>
   <header class="topbar">
-    <h1>Welcome</h1>
+    <h1>Handstand</h1>
     <button id="welcome-close" class="icon-button" aria-label="Close the welcome"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   </header>
   <div id="slides">
+    <article class="slide">
+      <h2>Welcome to Handstand</h2>
+      <p>A web app that times each handstand automatically with the camera and logs the attempts.</p>
+      <p>Tip: Save it to your home screen for easy access.</p>
+    </article>
     <article class="slide">
       <svg class="art" viewBox="0 0 240 170" aria-hidden="true">
         <path class="soft" d="M16 116h208"/>
@@ -229,13 +234,18 @@
         <path d="M176 76a9 9 0 0 1 1-18 13 13 0 0 1 25 3 8 8 0 0 1-1 15z"/>
         <path class="no" d="M170 90l40-48"/>
       </svg>
-      <h2>It stays on this phone</h2>
+      <h2>Privacy-first</h2>
       <p>No video is ever stored or uploaded. Sharing session totals is off unless you turn it on.</p>
-      <label class="welcome-switch">Share sessions <input type="checkbox" role="switch" class="switch" id="welcome-share"></label>
-      <p><a href="#privacy">Privacy statement</a></p>
+      <div class="tile setting">
+        <label class="tile-label tile-header">Share sessions <input type="checkbox" role="switch" class="switch" id="welcome-share"></label>
+        <p class="setting-note">
+          Shares totals of each session. Only counts and times, no names or ids.
+          <a href="#privacy">Privacy statement</a>
+        </p>
+      </div>
     </article>
   </div>
-  <div id="slide-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div id="slide-dots" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
   <button id="welcome-next">Next</button>
 </section>
 

@@ -44,7 +44,7 @@ Every screen starts with the same top bar (`.topbar`, 64 px): an icon button on 
 
 ## Welcome
 
-Three slides on first opening an empty app, and from Settings (Setup tips): set up the phone, give it a clear view, it stays on this phone. One tile per slide, swiped sideways, with dots and a gold button. The drawings use the icons' lines: gold is her, red what to avoid, dim what only places things.
+An intro and three slides on first opening an empty app, and from Settings (Setup tips): set up the phone, give it a clear view, it stays on this phone. One tile per slide, swiped sideways, with dots and a gold button. The drawings use the icons' lines: gold is her, red what to avoid, dim what only places things.
 
 ## Icons
 

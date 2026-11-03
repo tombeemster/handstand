@@ -337,7 +337,7 @@ $('share-summaries').onchange = $('welcome-share').onchange = e => {
   remember(SHARE_KEY, shareSummaries);
 };
 
-// ---- welcome: three slides, swiped sideways or with the button. Closing goes back to where it was opened
+// ---- welcome: an intro and three slides, swiped sideways or with the button. Closing goes back to where it was opened
 // from, and it won't open by itself again.
 const WELCOME_KEY = 'handstand.welcomed';
 let welcomeBack = '#home', slideAt = 0;
@@ -349,7 +349,7 @@ const slideLeft = i => $('slides').children[i].offsetLeft - $('slides').children
 const lastSlide = () => $('slides').children.length - 1;
 function showSlide() {
   [...$('slide-dots').children].forEach((dot, i) => dot.classList.toggle('on', i === slideAt));
-  $('welcome-next').textContent = slideAt >= lastSlide() ? 'Start' : 'Next';
+  $('welcome-next').textContent = slideAt === 0 ? 'How to start' : slideAt >= lastSlide() ? 'Start' : 'Next';
 }
 function renderWelcome() {
   $('welcome-share').checked = shareSummaries;
