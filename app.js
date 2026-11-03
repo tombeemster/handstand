@@ -290,7 +290,7 @@ function renderProfile() {
     ['Average', avg ? fmt(avg) + 's' : '–'],
   ].map(([label, value]) => label === 'Record' && pb
     // the record's row is the share button, with the forward icon after the value
-    ? `<li class="share-row"><button id="share-record" aria-label="Share her record of ${value}"><span>${label}</span><strong>${value}</strong>${FORWARD}</button></li>`
+    ? `<li class="share-row"><button id="share-record" aria-label="Share her record of ${value}"><span>${label}</span>${records().current.method === 'manual' ? '<small>manual</small>' : ''}<strong>${value}</strong>${FORWARD}</button></li>`
     : `<li><span>${label}</span><strong>${value}</strong></li>`).join('');
   $('count-manual').checked = countManual;
   $('share-summaries').checked = shareSummaries;
@@ -514,7 +514,7 @@ function prepareCard() {
   if (card?.key === key) return;
   const time = fmt(rec.duration_ms) + 's';
   const date = new Date(rec.started_at).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });
-  card = { key, file: recordCard({ time, date, name: athleteName })
+  card = { key, file: recordCard({ time, date, name: athleteName, manual: rec.method === 'manual' })
     .then(png => new File([png], `handstand-record-${time}.png`, { type: 'image/png' })) };
 }
 // The row is redrawn with the summary, so the tap is caught on the list
@@ -890,10 +890,11 @@ function draw(lm, poses) {
   g.globalAlpha = 1;
   const hint = lm && s.startTs === null ? framingHint(lm) : null;
   const warn = s.startTs === null && slow;
-  const status = s.startTs !== null ? 'Up!' : warn ? slowWarning() : !lm ? 'No one in view' : hint ?? 'Ready – kick up, side-on works best';
+  const status = s.startTs !== null ? 'Up!' : warn ? slowWarning() : !lm ? 'No one in view' : hint ?? (s.seenStanding ? 'Ready – kick up, side-on works best' : 'Stand in view, whole body');
   // only when it changes (the icon has no text, so textContent is the message alone)
   if ($('status').textContent !== status) $('status').innerHTML = (warn ? ALERT : '') + status;
-  if (lm) skeleton(lm, hint ? skin['--wait'] : skin['--ready']);   // amber: part of her is out of frame
+  // dim until she's been seen standing: the model can find a "person" in a chair, which isn't ready for anything
+  if (lm) skeleton(lm, hint ? skin['--wait'] : s.seenStanding || s.startTs !== null ? skin['--ready'] : skin['--dim']);   // amber: part of her is out of frame
 }
 
 // Frame rate check. The bake-off on all recorded clips timed 59 of 60 attempts at 30 fps, but only 44

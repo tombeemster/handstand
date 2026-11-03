@@ -73,11 +73,13 @@ export const MISS_REASONS = ['lock-on issue', 'not steady', 'not vertical', 'not
 export function createDetector({ onStart, onEnd, onMiss = () => {} }) {
   let W = 1, H = 1;                                 // frame size in pixels
   let startTs, last, invRun, downRun, downTs, seenTs, hist, missFrom, missWhy;
+  let seenStanding;                                 // the athlete has stood upright since the lock: for the screen only
   let athlete, size, sized;                         // athlete: { x, y, ts }, hip centre when last seen; size: her height (fraction of frame); sized: size measured
   reset();
 
   function reset() {
     startTs = last = athlete = missFrom = missWhy = null;
+    seenStanding = false;
     invRun = downRun = downTs = seenTs = 0;
     hist = [];
     size = 0.5;
@@ -93,7 +95,7 @@ export function createDetector({ onStart, onEnd, onMiss = () => {} }) {
 
   // The pose that is the athlete this frame, or null. Phantoms elsewhere in the room are skipped.
   function pickAthlete(poses, ts) {
-    if (athlete && startTs === null && ts - athlete.ts > LOCK_MS) athlete = null;
+    if (athlete && startTs === null && ts - athlete.ts > LOCK_MS) { athlete = null; seenStanding = false; }
     const candidates = sized ? poses.filter(lm => extent(lm) >= MIN_SIZE * size) : poses;
     if (!athlete) {   // the first person seen is the athlete; once her size is known, one about her size
       if (!candidates[0]) return null;
@@ -163,7 +165,9 @@ export function createDetector({ onStart, onEnd, onMiss = () => {} }) {
     const hip = hips.reduce((a, b) => a + b, 0) / hips.length;
     const wrist = wrists.length ? Math.max(...wrists) : null;   // image y grows downward
 
-    hist.push({ ts, wrist, standing: standing(lm) });
+    const stands = standing(lm);
+    if (stands) seenStanding = true;
+    hist.push({ ts, wrist, standing: stands });
     while (hist[0].ts < ts - HISTORY_MS) hist.shift();
 
     if (startTs === null) {
@@ -237,7 +241,9 @@ export function createDetector({ onStart, onEnd, onMiss = () => {} }) {
     },
     reset,
     get state() {
-      return { startTs, locked: athlete !== null, invRun, downRun, confirm: CONFIRM };
+      // seenStanding: only says what the screen shows. A chair with clothes on it can look like a person to
+      // the model, at full confidence, but never reads as standing (measured, IMG_2326: 0 of 259 frames).
+      return { startTs, locked: athlete !== null, seenStanding, invRun, downRun, confirm: CONFIRM };
     },
   };
 }

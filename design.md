@@ -14,7 +14,7 @@ Dark, calm and restrained: a few tiles on a near-black page, no decoration. The 
 - **Amber (`--wait`) is for "not ready":** the skeleton when part of her is out of frame, the alert icon when the frame rate is too low.
 - **Red (`--danger`) is for deleting for good:** the Delete all attempts and Delete daily attempts buttons, and a row's swipe-to-delete.
 - **REC red (`--rec`):** only the Record button on home, deeper than `--danger` so it reads as a camera button, not a warning.
-- **Skeleton on the camera:** green when she's framed and ready, amber when part of her is out of frame, faint grey for poses the app ignores.
+- **Skeleton on the camera:** dim until she's been seen standing (the model can find a "person" in a chair), then green when she's framed and ready, amber when part of her is out of frame, faint grey for poses the app ignores.
 - A value and its chart line share one colour through a `series-*` class (`series-record`, `series-best`, `series-avg`), so a tile and its line can't drift apart.
 
 ## Chart

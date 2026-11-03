@@ -6,6 +6,7 @@ const SIZE = 1080, MARGIN = 80;
 const LINE = 1.2;   // line height
 // The tile: home's Record tile at SCALE times its size (.stat, .stat b, --tile-radius, --tile-shadow)
 const SCALE = 6, VALUE = 24 * SCALE, PAD = 18 * SCALE, RADIUS = 8 * SCALE, EDGE = 3;
+const MANUAL = 38;   // "manually timed", under the date, when the record was tapped
 const BY = 56, OUTSIDE = 44, GAP = 48;   // "by [name]"; the lines above and below the tile, and their distance
 const token = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const font = (weight, size) => `${weight} ${size}px Inter, system-ui, sans-serif`;
@@ -17,10 +18,10 @@ function fit(g, text, size, weight, room) {
   return size;
 }
 
-// A Promise of the PNG, as a Blob. name: her name, or '' for none.
-export async function recordCard({ time, date, name }) {
+// A Promise of the PNG, as a Blob. name: her name, or '' for none; manual: the record was timed by tapping.
+export async function recordCard({ time, date, name, manual }) {
   // canvas text only uses a font that has already loaded; without it, the system font
-  await Promise.all(['500 40px Inter', '400 40px Inter'].map(f => document.fonts.load(f))).catch(() => {});
+  await Promise.all(['500 40px Inter', '400 40px Inter', 'italic 400 40px Inter'].map(f => document.fonts.load(f))).catch(() => {});
   const canvas = Object.assign(document.createElement('canvas'), { width: SIZE, height: SIZE });
   const g = canvas.getContext('2d');
   g.fillStyle = token('--bg');
@@ -47,7 +48,9 @@ export async function recordCard({ time, date, name }) {
     g.fillText(text, SIZE / 2, y);
   };
   line('Handstand', 500, OUTSIDE, token('--dim'), top - GAP - OUTSIDE * LINE / 2);
-  line(date, 400, OUTSIDE, token('--dim'), top + tileHeight + GAP + OUTSIDE * LINE / 2);
+  const dateY = top + tileHeight + GAP + OUTSIDE * LINE / 2;
+  line(date, 400, OUTSIDE, token('--dim'), dateY);
+  if (manual) line('manually timed', 'italic 400', MANUAL, token('--dim'), dateY + OUTSIDE * LINE / 2 + 16 + MANUAL * LINE / 2);
 
   // the tile: its background, the faint edge all round and the lighter top edge of --tile-shadow
   g.save();

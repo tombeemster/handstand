@@ -1,7 +1,7 @@
 // Tests the pure parts of the app: the session summary and the CSV format. Run: node tools/test.mjs
 import assert from 'node:assert/strict';
 import { sessionSummary, APP_VERSION, MISS_FIELDS } from '../summary.js';
-import { MISS_REASONS } from '../detect.js';
+import { MISS_REASONS, createDetector } from '../detect.js';
 import { toCsv, parseCsv } from '../csv.js';
 
 const attempt = (started_at, duration_ms, method = 'auto') => ({ id: 'a' + duration_ms, started_at, duration_ms, method });
@@ -56,6 +56,21 @@ assert.deepEqual(Object.keys(s), ['day', 'attempts_total', 'timed_auto', 'timed_
   'avg_ms', 'best_ms', 'record_ms', 'manual_counted', 'app_version']);
 assert.equal(s.day, '2026-11-01');
 assert.equal(s.app_version, APP_VERSION);
+
+// The screen's "seen standing": not for a pose that doesn't stand, yes once it does, gone with the lock
+const pose = ys => Array.from({ length: 33 }, (_, i) => ({ x: 0.5 + (i % 2) * 0.01, y: ys[i] ?? ys.hips, visibility: 1 }));
+const body = (nose, shoulder, hip, ankle) => { const ys = { hips: hip }; ys[0] = nose; ys[11] = ys[12] = shoulder; ys[15] = ys[16] = hip; ys[23] = ys[24] = hip; ys[27] = ys[28] = ankle; return pose(ys); };
+const seen = createDetector({ onStart() {}, onEnd() {} });
+seen.frame(0, [body(0.5, 0.5, 0.52, 0.55)], 100, 100);   // a heap on a chair
+assert.equal(seen.state.seenStanding, false, 'not standing');
+seen.frame(33, [body(0.2, 0.3, 0.5, 0.8)], 100, 100);
+assert.equal(seen.state.seenStanding, true, 'standing');
+seen.frame(3000, [], 100, 100);
+seen.frame(3033, [body(0.5, 0.5, 0.52, 0.55)], 100, 100);   // gone for over 2 s, and a new lock
+assert.equal(seen.state.seenStanding, false, 'lock released');
+seen.frame(3066, [body(0.2, 0.3, 0.5, 0.8)], 100, 100);
+seen.reset();
+assert.equal(seen.state.seenStanding, false, 'reset');
 
 // CSV: what is exported reads back the same, newest first
 const flagged = { ...attempt('2026-11-01T10:06:00', 3000), flagged: true };
