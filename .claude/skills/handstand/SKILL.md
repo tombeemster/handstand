@@ -65,7 +65,7 @@ Touch traps: a sideways gesture needs `touch-action: pan-y` on the row so up and
 
 - **A new near-miss reason touches five places:** `MISS_REASONS` in `detect.js`, `MISS_FIELDS` in `summary.js`, `MISSES` in `worker/index.js`, a column in `schema.sql` (and an `alter table` for the live table), and the tests. `OLD_REASONS` in `app.js` only maps wordings of rows already stored or exported.
 - **Deploy in this order:** table change in Supabase → `npx wrangler deploy` → push the app. The Worker refuses extra or missing fields, so the other order loses summaries.
-- **Supabase has no ids on purpose:** its Table Editor can't delete rows; use `delete ... where ...` in the SQL Editor. The maker pastes keys and runs SQL; a key never goes in the chat or the repo.
+- **Supabase rows have no meaningful ids:** only a random `row_id` from the database, so the Table Editor can delete rows. The app never sends or sees it. The maker pastes keys and runs SQL; a key never goes in the chat or the repo.
 - **Before concluding something fails on the phone, check the build:** a running app keeps its old code until it's fully closed and reopened, and GitHub Pages caches files for 10 minutes. A whole round of lock tests failed for that reason alone.
 
 ## Test data

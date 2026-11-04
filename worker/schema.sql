@@ -1,8 +1,10 @@
 -- The anonymous session summaries. Run once in Supabase's SQL editor (project in EU, Frankfurt).
--- No id column on purpose: a row can't be linked to a person, a phone or another row.
+-- Nothing in a row links it to a person, a phone or another row. row_id is only there so rows can be deleted
+-- in Supabase's Table Editor: random, made by the database, never sent by the app, and saying nothing about order.
 -- The checks on the values live in the Worker (index.js), the only one that can write here.
 
 create table public.session_summaries (
+  row_id         uuid     primary key default gen_random_uuid(),
   day            date     not null,
   attempts_total smallint not null,
   timed_auto     smallint not null,
