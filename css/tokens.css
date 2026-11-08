@@ -1,0 +1,69 @@
+/* Handstand: tokens. What the colours and rules mean: design.md. Every value the other files use lives
+   here; names start with what the token is (--color-, --space-, --size-, --radius-, ...). */
+
+/* 1. Tokens ---------------------------------------------------------------- */
+
+:root {
+  /* colours */
+  --color-bg: #11131a;
+  --color-tile: #181a24;
+  --color-tile-alt: color-mix(in srgb, var(--color-tile), #c4c4c4 5%);
+  --color-text: #f2f3f7;
+  --color-dim: #8b90a3;
+  --color-wait: #ffb347;
+  --color-ready: #3ddc84;        /* her skeleton when she's framed and ready */
+  --color-gold: #ffe388;
+  --color-error: #ff5c5c;        /* what went wrong or can't be undone: deleting, a row that wasn't timed, what to avoid */
+  --color-rec: #d23a2a;          /* the REC button's red dot (its light and dark edges are mixed from it) */
+  --color-scrim: #000a;          /* dark see-through backing for text on the camera view */
+  --color-scrim-strong: #000c;
+  --color-divider: rgba(255, 255, 255, 0.05);   /* the hairline between rows */
+
+  /* one length scale for spacing, corners and icons: each 100 is 4px. The number states the size, so a
+     different size is a new token (12px would be 300), never an edited one. */
+  --space-100: 4px;
+  --space-200: 8px;
+  --space-400: 16px;
+  --space-600: 24px;
+  --space-800: 32px;
+
+  --radius-100: 4px;
+  --radius-200: 8px;
+  --radius-pill: 99px;
+
+  --size-icon-500: 20px;        /* in the top bar and next to text */
+  --size-icon-600: 24px;        /* on the camera view */
+
+  /* type: a ladder from small to large (not evenly spaced), and the timer */
+  --font-size-100: 0.75rem;     /* tags, small print */
+  --font-size-200: 0.875rem;    /* the top bar's title, the status line, the lens buttons */
+  --font-size-300: 1rem;        /* body; at 16px or more iPhone doesn't zoom in on a field */
+  --font-size-400: 1.25rem;     /* a slide's title */
+  --font-size-500: 1.5rem;      /* the Record and Average values */
+  --font-size-display: 5rem;    /* the timer */
+
+  /* motion */
+  --duration-fast: 0.2s;
+  --duration-screen: 0.3s;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* iPhone notch and home bar. The top one is the notch plus a small gap (--space-200) under it, the
+     bottom one is the bare inset */
+  --space-safe-top: calc(env(safe-area-inset-top) + var(--space-200));
+  --space-safe-bottom: env(safe-area-inset-bottom);
+
+  /* the Record button floating at the bottom of home, and all the space it takes there: the button,
+     the gap under it and the iPhone home bar below that */
+  --size-button-record: 64px;
+  --space-safe-button-record: calc(var(--size-button-record) * 0.5);
+
+  --size-row: 48px;             /* the height of everything row-shaped: list rows, tile headers, the segments,
+                              the full-width buttons; whatever is in them */
+  --size-topbar: 64px;          /* the top bar on every screen: an icon button, the title, an icon button */
+  --size-button-row-delete: 80px;   /* the swipe-to-delete button's width, and how far an open row slides (app.js reads it) */
+  --size-tap: 48px;             /* an icon button's tap area, whatever the icon's size */
+  --radius-tile: var(--radius-200);
+  --color-tile-edge: rgba(0, 0, 0, 0.1);
+  --color-tile-edge-light: #c4c4c41a;
+  --shadow-tile: 0 1px 3px 0 rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px var(--color-tile-edge), inset 0 -1px 0 0 var(--color-tile-edge), inset 0 0 0 1px var(--color-tile-edge-light);
+}

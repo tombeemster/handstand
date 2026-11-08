@@ -1,0 +1,876 @@
+/* Handstand: the screens, in the order of the app. Needs tokens.css and base.css.
+
+   4. Record button        8. Profile and settings    12. The picture of a record
+   5. Home screen          9. A day's page            13. Moving between screens
+   6. Tiles and the log    10. Privacy statement
+   7. Record screen        11. Welcome
+*/
+
+/* 4. Record button: fixed at the bottom of home, the one way to the camera --- */
+
+/* Like the REC button on a camera body: a dark round housing, a recessed well, and in it a domed red
+   button lit from the top left that sinks a little while pressed. All drawn in CSS: the housing is
+   the link, the well its ::before, the red button its ::after. */
+#to-record {
+  position: fixed;
+  bottom: calc(var(--space-400) + var(--space-safe-bottom));   /* floats just above the iPhone home bar */
+  left: 50%;
+  z-index: 1;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  height: var(--size-button-record);
+  padding: 0 24px 0 64px;   /* on the left: the well's 14 + 44 and a gap */
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-tile), 0 6px 16px rgba(0, 0, 0, 0.5);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* the letters, spaced out like the print on a camera */
+#to-record span {
+  color: var(--color-dim);
+  letter-spacing: 0.4em;
+  margin-right: -0.25em;   /* no spacing after the last letter */
+}
+
+/* the well: sunk into the housing, dark inside, with a faint lit lip at its bottom edge */
+#to-record::before {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, .1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 1), inset 0 -1px 0px rgba(255, 255, 255, .1);
+}
+
+/* the red button: domed (light top left, dark bottom right), a soft highlight on its top edge, and a
+   shadow cast into the well */
+#to-record::after {
+  content: '';
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-rec);
+  box-shadow: 
+       0 2px 8px rgba(0, 0, 0, 0.5), 
+       inset 0 1px 1px rgba(255, 255, 255, 0.3), 
+       inset 0 1px 0px rgba(255, 255, 255, 0.1), 
+       inset 0 -1px 1px rgba(0, 0, 0, 0.5),
+       inset 0 -1px 0px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.1s;
+}
+
+#to-record:active::after {
+  /* transform: scale(1.1); */
+  box-shadow:
+      inset 0 1px 1px rgba(0, 0, 0, 0.5), 
+      0 -2px 2px rgba(0, 0, 0, 0.35);
+}
+
+#to-record:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 3px;
+}
+
+
+/* 5. Home screen ----------------------------------------------------------- */
+
+/* the chart is a tile: the seconds labels beside the scrolling plot */
+#chart {
+  margin: 0 0 var(--space-200);   /* a figure's own margins off: spaced like every tile */
+  padding: var(--space-400);
+  display: flex;
+  align-items: flex-start;
+}
+
+#chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-size: 11px;
+  fill: var(--color-dim);        /* axis labels */
+}
+
+/* the seconds labels: as wide as app.js says (--seconds-width, its L / W), so they match the plot's scale */
+#chart .seconds {
+  flex: 0 0 var(--seconds-width);
+}
+
+/* the plot: 7 days wide on screen, swipe for the weeks before (no scrollbar shown) */
+#chart .scroller {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;   /* a swipe at the end doesn't go back a page */
+  scrollbar-width: none;
+}
+
+#chart .scroller::-webkit-scrollbar {
+  display: none;
+}
+
+/* a tap on the Record or Average tile: its line flickers off and on 3 times */
+#chart .level.flash .line {
+  animation: flicker 0.6s step-end;
+}
+
+@keyframes flicker {
+  0%, 33%, 67% { opacity: 0; }
+  17%, 50%, 83% { opacity: 1; }
+}
+
+
+#tiles .stat {
+  cursor: pointer;
+}
+
+#chart .axis {
+  stroke: var(--color-dim);
+  opacity: 0.3;
+}
+
+
+#chart .line {
+  fill: none;
+  stroke: var(--series);
+  stroke-width: 1;
+}
+
+/* the daily line from the last practice day to today: the last best carried on, not a time of those days */
+#chart .carried {
+  stroke-dasharray: 3 4;
+}
+
+/* the average line: still the series-avg colour, but quieter than the record line */
+#chart .series-avg .line {
+  stroke-opacity: 0.4;
+}
+
+
+/* a faint line at each axis label */
+#chart .grid {
+  stroke: var(--color-dim);
+  opacity: 0.15;
+}
+
+/* under the daily-best line: the series colour fading out downwards */
+#chart .area {
+  stroke: none;
+}
+
+#chart .fill-top {
+  stop-color: var(--series);
+  stop-opacity: 0.2;
+}
+
+#chart .fill-bottom {
+  stop-color: var(--series);
+  stop-opacity: 0;
+}
+
+#chart circle {
+  fill: var(--series);
+}
+
+/* Before her first attempt: one tile fills the screen down to the Record button, the others are hidden */
+#home.empty {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+#home.empty > :not(.topbar, #home-empty, #to-record),
+#home:not(.empty) #home-empty {
+  display: none;
+}
+
+#home-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-600);
+}
+
+#home-empty p {
+  margin: 0;
+  max-width: 240px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* the arrow over the Record button, only in the empty state: floats just above it, bobbing down
+   towards it and back (still with reduced motion) */
+#start-here {
+  position: fixed;
+  bottom: calc(var(--space-400) + var(--space-safe-bottom) + var(--size-button-record) + var(--space-600));
+  left: 50%;
+  z-index: 1;
+  width: var(--size-icon-600);
+  height: var(--size-icon-600);
+  margin-left: calc(var(--size-icon-600) / -2);
+  stroke: var(--color-dim);
+  animation: bob 1.4s ease-in-out infinite;
+}
+
+@keyframes bob {
+  50% { transform: translateY(8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #start-here {
+    animation: none;
+  }
+}
+
+/* All-time record and average side by side, as one row of tiles */
+#tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-200);
+  margin-bottom: var(--space-200);
+}
+
+#tiles .tile {
+  margin: 0;
+}
+
+/* a value tile: its name, and the value big underneath (Record, Average) */
+.stat {
+  padding: var(--space-600);
+  color: var(--color-dim);
+  text-align: center;
+}
+
+.stat b {
+  display: block;
+  font-size: var(--font-size-500);
+  font-weight: 400;
+  color: var(--series);
+  font-variant-numeric: tabular-nums;
+}
+
+
+/* 6. Tiles, day tiles and the log screen ---------------------------------- */
+
+/* A tile: every box on the page (the chart, Record and Average, the lists, the settings). Extra
+   classes say what kind: stat, day, setting. */
+.tile {
+  margin-bottom: var(--space-200);
+  border-radius: var(--radius-tile);
+  background: var(--color-tile);
+  box-shadow: var(--shadow-tile);
+}
+
+/* One tile per day: the date on top, then that day's attempts. Tiles off-screen aren't laid out or
+   painted until they scroll near (content-visibility), so a long log stays quick; contain-intrinsic-size
+   keeps the scrollbar honest meanwhile (about a 3-row tile). */
+.day {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 240px;
+}
+
+/* a tile that is a link as a whole: a log's day tile (to its day), home's Best attempts (to the log) */
+a.tile {
+  display: block;
+}
+
+/* same lettering as the tiles' "Record" and "Average" */
+.tile-label {
+  justify-content: center;
+  border-bottom: 1px solid var(--color-divider);
+  text-align: center;
+}
+
+/* a tile title on the left, an arrow on the right: the tiles that are links */
+.tile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+}
+
+/* a list is part of its tile, not a tile of its own */
+.tile ul {
+  background: none;
+  box-shadow: none;
+}
+
+/* A full-width button: a row tall, on a tile's shadow (the log's Import, Export and Delete all, a day's
+   Clear, the welcome's Next, the share picture's Share) */
+.button-wide {
+  width: 100%;
+  min-height: var(--size-row);
+  padding: 0 var(--space-400);
+  box-shadow: var(--shadow-tile);
+}
+
+/* red text: what can't be undone (the row's swipe-to-delete button is one too) */
+.button-danger,
+.row-delete {
+  color: var(--color-error);
+}
+
+#delete-all {
+  margin-top: var(--space-200);
+}
+
+
+/* 7. Record screen: the camera fills the whole screen; everything else floats on top */
+
+#record {
+  position: fixed;
+  inset: 0;
+  background: #000;
+}
+
+/* the record screen's top bar floats on the camera, under the iPhone notch; the side padding puts the
+   icons where the pages' padding puts theirs */
+#record .topbar {
+  position: absolute;
+  top: var(--space-safe-top);
+  left: 0;
+  right: 0;
+  z-index: 1;
+  padding-inline: var(--space-200);
+}
+
+#record h1 {
+  text-shadow: 0 1px 6px #000;
+}
+
+/* on the camera: icons bigger (24 px), white and shadowed, readable on any picture */
+#record .icon-button {
+  color: var(--color-text);
+  filter: drop-shadow(0 1px 4px #000);
+}
+
+#record .icon-button svg {
+  width: var(--size-icon-600);
+  height: var(--size-icon-600);
+}
+
+#stage,
+#stage video,
+#stage canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#stage video,
+#stage canvas {
+  object-fit: contain;     /* the whole camera frame, so framing hints match what you see */
+}
+
+.mirror video,
+.mirror canvas {
+  transform: scaleX(-1);   /* front camera, like a selfie */
+}
+
+#status,
+#debug {
+  position: absolute;
+  top: calc(var(--size-topbar) + var(--space-safe-top));
+  background: var(--color-scrim);
+}
+
+#status {
+  left: 50%;
+  transform: translateX(-50%);   /* centred, at most the screen's width less a margin */
+  width: max-content;
+  max-width: calc(100% - 2 * var(--space-400));
+  text-align: center;
+  padding: var(--space-100) 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-200);
+}
+
+/* in front of the low frame rate warning */
+#status .alert {
+  margin-right: 6px;
+  vertical-align: -0.125em;
+  stroke: var(--color-wait);   /* amber, like the skeleton when part of her is out of frame */
+}
+
+#debug {
+  top: calc(var(--size-topbar) + 40px + var(--space-safe-top));   /* below the status line */
+  right: var(--space-200);
+  margin: 0;
+  padding: var(--space-100) var(--space-200);
+  border-radius: var(--radius-100);
+  font: var(--font-size-100)/1.3 ui-monospace, monospace;
+}
+
+#notice {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: var(--space-200) 14px;
+  border-radius: var(--radius-100);
+  background: var(--color-scrim-strong);
+}
+
+/* the timer, just above the bottom bar */
+#controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--space-safe-bottom) + var(--size-topbar));
+}
+
+/* The bottom bar mirrors the top bar: the same height and side padding, an icon button at either end,
+   the lens choice centred between them (the columns stay when one is hidden) */
+.bottombar {
+  position: absolute;
+  bottom: var(--space-safe-bottom);
+  left: 0;
+  right: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: var(--size-tap) minmax(0, 1fr) var(--size-tap);
+  align-items: center;
+  height: var(--size-topbar);
+  padding-inline: var(--space-200);
+}
+
+#timer {
+  cursor: pointer;          /* tap to start and stop timing by hand */
+  font-size: var(--font-size-display);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  text-shadow: 0 2px 12px #000;
+}
+
+#timer.record {
+  color: var(--color-gold);   /* just set a new record */
+}
+
+/* lens choice, centred */
+#zoom {
+  grid-column: 2;
+  justify-self: center;
+  display: flex;
+  gap: var(--space-200);
+  padding: var(--space-100);
+  border-radius: var(--radius-pill);
+  background: var(--color-scrim);
+}
+
+#zoom button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  background: none;
+  font-size: var(--font-size-200);
+  color: var(--color-text);
+}
+
+#zoom button[aria-pressed="true"] {
+  background: var(--color-scrim-strong);
+  color: var(--color-text);
+}
+
+#mute {
+  grid-column: 1;
+}
+
+#flip {
+  grid-column: 3;
+}
+
+/* the icon shows the current state: a speaker with waves, or crossed out when muted */
+#mute[aria-pressed="true"] .sound-on,
+#mute[aria-pressed="false"] .sound-off {
+  display: none;
+}
+
+/* debug box on/off: dim, bright while the box is shown */
+#record #debug-toggle {
+  color: var(--color-dim);
+}
+
+#record #debug-toggle[aria-pressed="true"] {
+  color: var(--color-text);
+}
+
+/* 8. Profile and settings --------------------------------------------------- */
+
+/* The summary tile's header is her name, editable: a text field that looks exactly like a header, the
+   pencil on the right saying it can be changed. Tapping anywhere on the header edits it. */
+.name-field {
+  gap: var(--space-200);
+  cursor: text;
+}
+
+.name-field input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;            /* 1rem: at 16 px or more iPhone doesn't zoom in on the field */
+  outline: none;
+}
+
+.name-field input::placeholder {
+  color: var(--color-dim);
+}
+
+.name-field svg {
+  flex: none;
+  color: var(--color-dim);
+}
+
+/* while typing: the header's bottom line lights up, so it's clear what is being edited */
+.name-field:focus-within {
+  border-bottom-color: var(--color-dim);
+}
+
+/* the Profile summary: a label on the left, its value on the right, like an attempt row */
+#summary span {
+  flex: 1;
+  color: var(--color-dim);
+}
+
+/* the profile's segments: one pill, the segment on view filled */
+.segments {
+  position: relative;      /* for the highlight */
+  display: flex;
+  height: var(--size-row);      /* a row, like the tiles' rows under it; the segments fill it */
+  margin-bottom: var(--space-200);
+  padding: var(--space-100);
+  border-radius: var(--radius-tile);
+  background: var(--color-bg);
+  border: 1px solid var(--color-tile-edge-light);
+}
+
+.segments a {
+  position: relative;      /* above the highlight */
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-200);
+  border-radius: var(--radius-100);
+  color: var(--color-dim);
+  font-weight: 500;
+}
+
+.segments a[aria-current] {
+  color: var(--color-text);
+}
+
+/* the highlight under the segment on view: slides to the one tapped (app.js sets --at, its index, and --segments, their number) */
+.segments .thumb {
+  position: absolute;
+  top: var(--space-100);
+  bottom: var(--space-100);
+  left: var(--space-100);
+  width: calc((100% - 2 * var(--space-100)) / var(--segments));   /* one of the segments */
+  border-radius: var(--radius-100);
+  background: var(--color-tile);
+  box-shadow: var(--shadow-tile);
+  transform: translateX(calc(var(--at, 0) * 100%));
+  transition: transform 0.25s var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segments .thumb {
+    transition: none;
+  }
+}
+
+/* 9. A day's page (#log/2026-10-23) ----------------------------------------- */
+
+/* Swipe a row left to show its Delete button (app.js sets --dx, from 0 to minus the row's width, while
+   dragging and when it settles; past half the row it deletes). Sideways drags are the page's own; up
+   and down still scroll. */
+#day-list li[data-id] {
+  --dx: 0px;
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+
+#day-list li[data-id] > * {
+  transition: transform var(--duration-fast) ease-out, width var(--duration-fast) ease-out;
+}
+
+#day-list li.dragging > * {
+  transition: none;
+}
+
+#day-list li > time,
+#day-list li > small,
+#day-list li > strong {
+  transform: translateX(var(--dx));
+}
+
+/* off to the right of the row until it slides in, --size-button-row-delete wide (app.js reads it); swiped further, it
+   grows to fill the space the row leaves */
+.row-delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: max(var(--size-button-row-delete), -1 * var(--dx));
+  padding: 0;
+  border-radius: 0;
+  background: var(--color-bg);
+  transform: translateX(max(0px, var(--size-button-row-delete) + var(--dx)));
+}
+
+/* 10. Privacy statement (#privacy) ------------------------------------------ */
+
+/* running text in a tile: the privacy statement */
+.prose {
+  padding: var(--space-400);
+  line-height: 1.5;
+}
+
+.prose h2 {
+  margin: var(--space-600) 0 var(--space-100);
+  font-size: var(--font-size-300);
+  font-weight: 600;
+}
+
+.prose h2:first-child {
+  margin-top: 0;
+}
+
+.prose p {
+  margin: var(--space-200) 0;
+  color: var(--color-dim);
+}
+
+/* "What gets sent", at the end of the privacy statement: the summary as it is sent */
+.prose pre {
+  margin: 0;
+  padding: var(--space-200);
+  overflow-x: auto;
+  border-radius: var(--radius-100);
+  background: var(--color-bg);
+  color: var(--color-dim);
+  font: var(--font-size-100)/1.4 ui-monospace, monospace;
+}
+
+/* 11. Welcome (#welcome) ---------------------------------------------------- */
+
+/* The welcome fills the screen: the top bar, the slides taking up the space, the dots, the button */
+#welcome:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+/* the slides, side by side, one in view, swiped sideways and settling on each (no scrollbar shown) */
+#slides {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: var(--space-200);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+#slides::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  flex: 0 0 100%;
+  margin: 0;
+  padding: var(--space-600);
+  overflow-y: auto;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.slide h2 {
+  margin: var(--space-600) 0 var(--space-200);
+  font-size: var(--font-size-400);
+  font-weight: 500;
+}
+
+.slide p {
+  margin: 0 0 var(--space-200);
+  color: var(--color-dim);
+  line-height: 1.45;
+}
+
+/* the drawings: lines like the icons'. Gold is her, red what to avoid, dim what's only there to place things */
+.art {
+  flex: none;
+  width: 100%;
+  max-height: 34dvh;
+  stroke: var(--color-text);
+}
+
+.art .hero {
+  stroke: var(--color-gold);
+}
+
+.art .soft {
+  stroke: var(--color-dim);
+}
+
+.art .dashed {
+  stroke-dasharray: 3 5;
+  stroke-width: 1;
+}
+
+.art .no {
+  stroke: var(--color-error);
+}
+
+.art text {
+  fill: var(--color-dim);
+  stroke: none;
+  font-size: 12px;
+}
+
+/* the Share sessions tile on the last slide: the settings' own, not the slide's text */
+.slide .setting {
+  flex: none;
+  margin: var(--space-200) 0 0;
+}
+
+.slide .setting-note {
+  margin: 0;
+  line-height: inherit;
+}
+
+#slide-dots {
+  flex: none;
+  display: flex;
+  justify-content: center;
+  gap: var(--space-200);
+  padding: var(--space-400) 0;
+}
+
+#slide-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-dim);
+  opacity: 0.4;
+}
+
+#slide-dots span.on {
+  background: var(--color-text);
+  opacity: 1;
+}
+
+#welcome-next {
+  flex: none;
+  max-width: 240px;
+  margin: 0 auto;
+}
+
+/* 12. The picture of a record, and sharing it ------------------------------- */
+
+/* The picture of the record, shown before sharing: over a dark page, the cross top right, Share under it */
+#share-preview {
+  width: min(100vw - 2 * var(--space-400), 420px);
+  padding: 0 var(--space-400) var(--space-400);
+  border: 0;
+  border-radius: var(--radius-tile);
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow: var(--shadow-tile);
+}
+
+#share-preview::backdrop {
+  background: var(--color-scrim-strong);
+}
+
+#share-close {
+  display: flex;
+  margin: 0 calc(-1 * var(--space-200)) 0 auto;
+}
+
+#share-image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: var(--radius-100);
+  background: var(--color-bg);
+}
+
+#share-send {
+  margin-top: var(--space-400);
+}
+
+/* the record's row shares it: the whole row is the button, otherwise looking like the rows around it */
+.share-row {
+  padding: 0;
+}
+
+#share-record {
+  gap: var(--space-200);
+  width: 100%;
+  border-radius: 0;
+  background: none;
+  font-weight: 400;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#share-record:active {
+  background: var(--color-tile-alt);
+}
+
+#share-record svg {
+  flex: none;
+  stroke: var(--color-dim);
+}
+
+/* 13. Moving between screens ------------------------------------------------ */
+
+/* Moving between screens (app.js sets data-slide): the new screen slides over the old one, or the old
+   one slides away off the new; the screen that doesn't move stays put */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-screen);
+  animation-timing-function: var(--ease-out);
+}
+
+[data-slide="in"]::view-transition-new(root) { animation-name: from-right; }
+[data-slide="up"]::view-transition-new(root) { animation-name: from-bottom; }
+[data-slide="drop"]::view-transition-new(root) { animation-name: from-top; }
+[data-slide="in"]::view-transition-old(root),
+[data-slide="up"]::view-transition-old(root),
+[data-slide="drop"]::view-transition-old(root),
+[data-slide="lift"]::view-transition-new(root),
+[data-slide="out"]::view-transition-new(root),
+[data-slide="down"]::view-transition-new(root) { animation: none; }
+[data-slide="out"]::view-transition-old(root) { animation-name: to-right; z-index: 1; }
+[data-slide="down"]::view-transition-old(root) { animation-name: to-bottom; z-index: 1; }
+[data-slide="lift"]::view-transition-old(root) { animation-name: to-top; z-index: 1; }
+
+@keyframes from-right { from { transform: translateX(100%); } }
+@keyframes to-right { to { transform: translateX(100%); } }
+@keyframes from-bottom { from { transform: translateY(100%); } }
+@keyframes to-bottom { to { transform: translateY(100%); } }
+@keyframes from-top { from { transform: translateY(-100%); } }
+@keyframes to-top { to { transform: translateY(-100%); } }

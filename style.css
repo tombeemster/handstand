@@ -5,7 +5,7 @@
    3. Shared: buttons, attempt rows, scrolling pages
    4. Record button
    5. Home screen
-   6. Day tiles and log screen
+   6. Day tiles and log screen 
    7. Record screen
    8. A day's page
 */
@@ -15,49 +15,66 @@
 
 :root {
   /* colours */
-  --bg: #11131a;
-  --tile: #181a24;
-  --tile-alt: color-mix(in srgb, var(--tile), #c4c4c4 5%);
-  --text: #f2f3f7;
-  --text-invert: var(--bg);
-  --dim: #8b90a3;
-  --wait: #ffb347;
-  --ready: #3ddc84;        /* her skeleton when she's framed and ready */
-  --gold: #ffe388;
-  --danger: #ff5c5c;       /* deleting for good: the delete buttons, the swipe-to-delete */
-  --rec: #d23a2a;          /* the REC button's red dot (its light and dark edges are mixed from it) */
-  --scrim: #000a;          /* dark see-through backing for text on the camera view */
-  --scrim-strong: #000c;
+  --color-bg: #11131a;
+  --color-tile: #181a24;
+  --color-tile-alt: color-mix(in srgb, var(--color-tile), #c4c4c4 5%);
+  --color-text: #f2f3f7;
+  --color-text-invert: var(--color-bg);
+  --color-dim: #8b90a3;
+  --color-wait: #ffb347;
+  --color-ready: #3ddc84;        /* her skeleton when she's framed and ready */
+  --color-gold: #ffe388;
+  --color-error: #ff5c5c;        /* what went wrong or can't be undone: deleting, a row that wasn't timed, what to avoid */
+  --color-rec: #d23a2a;          /* the REC button's red dot (its light and dark edges are mixed from it) */
+  --color-scrim: #000a;          /* dark see-through backing for text on the camera view */
+  --color-scrim-strong: #000c;
+  --color-divider: rgba(255, 255, 255, 0.05);   /* the hairline between rows */
 
-  /* spacing */
-  --gap-xs: 4px;
-  --gap-s: 8px;
-  --gap-m: 16px;
-  --gap-l: 24px;
-  --gap-xl: 32px;
+  /* one length scale for spacing, corners and icons: each 100 is 4px. The number states the size, so a
+     different size is a new token (12px would be 300), never an edited one. */
+  --space-100: 4px;
+  --space-200: 8px;
+  --space-400: 16px;
+  --space-600: 24px;
+  --space-800: 32px;
 
-  /* corners */
-  --radius-s: 2px;
-  --radius-m: 4px;
-  --radius-l: 8px;
+  --radius-100: 4px;
+  --radius-200: 8px;
+  --radius-pill: 99px;
+
+  --size-icon-500: 20px;        /* in the top bar and next to text */
+  --size-icon-600: 24px;        /* on the camera view */
+
+  /* type: a ladder from small to large (not evenly spaced), and the timer */
+  --font-size-100: 0.75rem;     /* tags, small print */
+  --font-size-200: 0.875rem;    /* the top bar's title, the status line, the lens buttons */
+  --font-size-300: 1rem;        /* body; at 16px or more iPhone doesn't zoom in on a field */
+  --font-size-400: 1.25rem;     /* a slide's title */
+  --font-size-500: 1.5rem;      /* the Record and Average values */
+  --font-size-display: 5rem;    /* the timer */
+
+  /* motion */
+  --duration-fast: 0.2s;
+  --duration-screen: 0.3s;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   /* iPhone notch and home bar */
-  --safe-top: calc(env(safe-area-inset-top) + var(--gap-s));
-  --safe-bottom: env(safe-area-inset-bottom);
+  --space-safe-top: calc(env(safe-area-inset-top) + var(--space-200));
+  --space-safe-bottom: env(safe-area-inset-bottom);
 
   /* the Record button floating at the bottom of home, and all the space it takes there: the button,
      the gap under it and the iPhone home bar below that */
-  --record-button: 64px;
-  --bottom-space: calc(var(--record-button) * 0.5);
+  --size-button-record: 64px;
+  --space-safe-button-record: calc(var(--size-button-record) * 0.5);
 
-  --row: 48px;             /* the height of everything row-shaped: list rows, tile headers, the segments,
+  --size-row: 48px;             /* the height of everything row-shaped: list rows, tile headers, the segments,
                               the full-width buttons; whatever is in them */
-  --topbar: 64px;          /* the top bar on every screen: an icon button, the title, an icon button */
-  --tap: 48px;             /* an icon button's tap area, whatever the icon's size */
-  --tile-radius: var(--radius-l);
-  --tile-edge: rgba(0, 0, 0, 0.1);
-  --tile-edge-light: #c4c4c41a;
-  --tile-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px var(--tile-edge), inset 0 -1px 0 0 var(--tile-edge), inset 0 0 0 1px var(--tile-edge-light);
+  --size-topbar: 64px;          /* the top bar on every screen: an icon button, the title, an icon button */
+  --size-tap: 48px;             /* an icon button's tap area, whatever the icon's size */
+  --radius-tile: var(--radius-200);
+  --color-tile-edge: rgba(0, 0, 0, 0.1);
+  --color-tile-edge-light: #c4c4c41a;
+  --shadow-tile: 0 1px 3px 0 rgba(0, 0, 0, 0.06), inset 0 1px 0 0 rgba(255, 255, 255, 0.06), inset 0 0 0 1px var(--color-tile-edge), inset 0 -1px 0 0 var(--color-tile-edge), inset 0 0 0 1px var(--color-tile-edge-light);
 }
 
 
@@ -69,10 +86,10 @@
 
 body {
   margin: 0 auto;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: 1rem;
+  font-size: var(--font-size-300);
   font-weight: 400;
   -webkit-user-select: none;
   user-select: none;
@@ -87,7 +104,7 @@ a {
 h1 {
   margin: 0;
   padding: 0;
-  font-size: 0.9rem;
+  font-size: var(--font-size-200);
   font-weight: 500;
   text-align: center;
   text-transform: uppercase;
@@ -98,9 +115,9 @@ ul {
   margin: 0;
   padding: 0;
   list-style: none;
-  background: var(--tile);
-  border-radius: var(--radius-s);
-  box-shadow: var(--tile-shadow);
+  background: var(--color-tile);
+  border-radius: var(--radius-100);
+  box-shadow: var(--shadow-tile);
 }
 
 [hidden] {
@@ -113,9 +130,9 @@ ul {
    the camera); each optional. Everything centred vertically; a long title is cut off with an ellipsis. */
 .topbar {
   display: grid;
-  grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
+  grid-template-columns: var(--size-tap) minmax(0, 1fr) var(--size-tap);
   align-items: center;
-  height: var(--topbar);
+  height: var(--size-topbar);
 }
 
 .topbar > * {
@@ -142,19 +159,26 @@ ul {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--tap);
-  height: var(--tap);
+  width: var(--size-tap);
+  height: var(--size-tap);
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: none;
-  color: var(--dim);
+  color: var(--color-dim);
   -webkit-tap-highlight-color: transparent;
 }
 
-.icon-button svg {
-  width: 20px;
-  height: 20px;
+/* A line icon (Lucide): no fill, a 2-unit stroke, round ends and joins. The colour is the stroke, the text
+   colour unless a rule says otherwise. New markup takes the class; the selectors after it are icons the
+   app already draws. */
+.icon,
+.icon-button svg,
+.tile-header svg,
+#start-here,
+#status .alert,
+#share-record svg,
+.art {
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -162,59 +186,82 @@ ul {
   stroke-linejoin: round;
 }
 
+/* next to text: as big as the text */
+.icon,
+.tile-header svg,
+#status .alert,
+#share-record svg {
+  width: 1em;
+  height: 1em;
+}
+
+.icon-button svg {
+  width: var(--size-icon-500);
+  height: var(--size-icon-500);
+}
+
 
 /* 3. Shared ---------------------------------------------------------------- */
 
 /* All-time record, daily highest and average: one colour each, shared by the tiles and the chart */
-.series-record { --series: var(--gold); }
-.series-best { --series: var(--text); }
-.series-avg { --series: var(--text); }
+.series-record { --series: var(--color-gold); }
+.series-best { --series: var(--color-text); }
+.series-avg { --series: var(--color-text); }
 
 button {
-  padding: var(--gap-m);
+  padding: var(--space-400);
   border: 0;
-  border-radius: var(--tile-radius);
-  background: var(--tile);
-  color: var(--text);
+  border-radius: var(--radius-tile);
+  background: var(--color-tile);
+  color: var(--color-text);
   font: inherit;
   font-weight: 600;
 }
 
+/* A row: a fixed height with its contents centred in it, whatever they are. A height, not padding: a badge
+   or dot can't make one row taller than the rest. List rows, tile titles and the record's share button are
+   rows already; new markup takes the class. */
+.row,
+li,
+.tile-label,
+#share-record {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-row);
+  padding: 0 var(--space-400);
+}
+
 /* An attempt: time of day on the left, duration on the right */
 li {
-  display: flex;
-  align-items: center;      /* its contents centred in the row's fixed height */
-  gap: var(--gap-s);
-  min-height: var(--row);   /* not padding: a badge or dot can't make one row taller than the rest */
-  padding: 0 var(--gap-m);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  gap: var(--space-200);
+  border-bottom: 1px solid var(--color-divider);
 }
 
 
 /* Gold for a record: an attempt that set a record at its time */
 li.best time {
-  color: var(--text);
+  color: var(--color-text);
 }
 
 li.best strong {
-  color: var(--gold);
+  color: var(--color-gold);
 }
 
 li time {
   flex: 1;
-  color: var(--dim);
+  color: var(--color-dim);
   font-variant-numeric: tabular-nums;   /* every time the same width, so what follows lines up */
 }
 
 /* a tag in a row, "manual" on a tapped attempt: on the right, just before the duration (the time takes
    up the free space, the row's gap-s keeps them apart) */
 li small {
-  padding: 1px 4px;
-  border: 1px solid var(--tile-edge-light);
-  border-radius: var(--radius-m);
-  background: var(--bg);
-  color: var(--dim);
-  font-size: 0.75rem;
+  padding: 1px var(--space-100);
+  border: 1px solid var(--color-tile-edge-light);
+  border-radius: var(--radius-100);
+  background: var(--color-bg);
+  color: var(--color-dim);
+  font-size: var(--font-size-100);
   line-height: 1.4;
 }
 
@@ -224,15 +271,15 @@ li strong {
 }
 
 .text-dim {
-  color: var(--dim);
+  color: var(--color-dim);
 }
 
 .is-record {
-  color: var(--text);
+  color: var(--color-text);
 }
 
 .is-fail{
-  color: var(--danger);
+  color: var(--color-error);
 }
 
 
@@ -242,11 +289,11 @@ li strong {
 #profile,
 #privacy,
 #welcome {
-  padding: var(--safe-top) var(--gap-s) calc(var(--safe-bottom) + var(--gap-l));
+  padding: var(--space-safe-top) var(--space-200) calc(var(--space-safe-bottom) + var(--space-600));
 }
 
 #home {
-  padding-bottom: calc(var(--bottom-space) + var(--gap-m));
+  padding-bottom: calc(var(--space-safe-button-record) + var(--space-400));
 }
 
 
@@ -258,23 +305,23 @@ li strong {
    the link, the well its ::before, the red button its ::after. */
 #to-record {
   position: fixed;
-  bottom: calc(var(--gap-m) + var(--safe-bottom));   /* floats just above the iPhone home bar */
+  bottom: calc(var(--space-400) + var(--space-safe-bottom));   /* floats just above the iPhone home bar */
   left: 50%;
   z-index: 1;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  height: var(--record-button);
+  height: var(--size-button-record);
   padding: 0 24px 0 64px;   /* on the left: the well's 14 + 44 and a gap */
-  border-radius: 99px;
-  background: var(--bg);
-  box-shadow: var(--tile-shadow), 0 6px 16px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  box-shadow: var(--shadow-tile), 0 6px 16px rgba(0, 0, 0, 0.5);
   -webkit-tap-highlight-color: transparent;
 }
 
 /* the letters, spaced out like the print on a camera */
 #to-record span {
-  color: var(--dim);
+  color: var(--color-dim);
   letter-spacing: 0.4em;
   margin-right: -0.25em;   /* no spacing after the last letter */
 }
@@ -302,7 +349,7 @@ li strong {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--rec);
+  background: var(--color-rec);
   box-shadow: 
        0 2px 8px rgba(0, 0, 0, 0.5), 
        inset 0 1px 1px rgba(255, 255, 255, 0.3), 
@@ -320,7 +367,7 @@ li strong {
 }
 
 #to-record:focus-visible {
-  outline: 2px solid var(--text);
+  outline: 2px solid var(--color-text);
   outline-offset: 3px;
 }
 
@@ -329,8 +376,8 @@ li strong {
 
 /* the chart is a tile: the seconds labels beside the scrolling plot */
 #chart {
-  margin: 0 0 var(--gap-s);   /* a figure's own margins off: spaced like every tile */
-  padding: var(--gap-m);
+  margin: 0 0 var(--space-200);   /* a figure's own margins off: spaced like every tile */
+  padding: var(--space-400);
   display: flex;
   align-items: flex-start;
 }
@@ -340,7 +387,7 @@ li strong {
   width: 100%;
   height: auto;
   font-size: 11px;
-  fill: var(--dim);        /* axis labels */
+  fill: var(--color-dim);        /* axis labels */
 }
 
 /* the seconds labels: 30 / 320 of the width, as app.js's L / W, so they match the plot's scale */
@@ -377,7 +424,7 @@ li strong {
 }
 
 #chart .axis {
-  stroke: var(--dim);
+  stroke: var(--color-dim);
   opacity: 0.3;
 }
 
@@ -406,7 +453,7 @@ li strong {
 
 /* a faint line at each axis label */
 #chart .grid {
-  stroke: var(--dim);
+  stroke: var(--color-dim);
   opacity: 0.15;
 }
 
@@ -447,7 +494,7 @@ li strong {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--gap-l);
+  gap: var(--space-600);
 }
 
 #home-empty p {
@@ -461,17 +508,13 @@ li strong {
    towards it and back (still with reduced motion) */
 #start-here {
   position: fixed;
-  bottom: calc(var(--gap-m) + var(--safe-bottom) + var(--record-button) + var(--gap-l));
+  bottom: calc(var(--space-400) + var(--space-safe-bottom) + var(--size-button-record) + var(--space-600));
   left: 50%;
   z-index: 1;
-  width: 24px;
-  height: 24px;
-  margin-left: -12px;
-  fill: none;
-  stroke: var(--dim);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  width: var(--size-icon-600);
+  height: var(--size-icon-600);
+  margin-left: calc(var(--size-icon-600) / -2);
+  stroke: var(--color-dim);
   animation: bob 1.4s ease-in-out infinite;
 }
 
@@ -489,8 +532,8 @@ li strong {
 #tiles {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--gap-s);
-  margin-bottom: var(--gap-s);
+  gap: var(--space-200);
+  margin-bottom: var(--space-200);
 }
 
 #tiles .tile {
@@ -499,14 +542,14 @@ li strong {
 
 /* a value tile: its name, and the value big underneath (Record, Average) */
 .stat {
-  padding: var(--gap-l);
-  color: var(--dim);
+  padding: var(--space-600);
+  color: var(--color-dim);
   text-align: center;
 }
 
 .stat b {
   display: block;
-  font-size: 1.5rem;
+  font-size: var(--font-size-500);
   font-weight: 400;
   color: var(--series);
   font-variant-numeric: tabular-nums;
@@ -518,10 +561,10 @@ li strong {
 /* A tile: every box on the page (the chart, Record and Average, the lists, the settings). Extra
    classes say what kind: stat, day, setting. */
 .tile {
-  margin-bottom: var(--gap-s);
-  border-radius: var(--tile-radius);
-  background: var(--tile);
-  box-shadow: var(--tile-shadow);
+  margin-bottom: var(--space-200);
+  border-radius: var(--radius-tile);
+  background: var(--color-tile);
+  box-shadow: var(--shadow-tile);
 }
 
 /* One tile per day: the date on top, then that day's attempts. Tiles off-screen aren't laid out or
@@ -532,19 +575,15 @@ li strong {
   contain-intrinsic-size: auto 240px;
 }
 
-/* a tile that is a link as a whole: a log's day tile (to its day), home's Daily highs (to the log) */
+/* a tile that is a link as a whole: a log's day tile (to its day), home's Best attempts (to the log) */
 a.tile {
   display: block;
 }
 
 /* same lettering as the tiles' "Record" and "Average" */
 .tile-label {
-  display: flex;
-  align-items: center;
   justify-content: center;
-  min-height: var(--row);   /* a row, like the list rows under it */
-  padding: 0 var(--gap-m);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--color-divider);
   text-align: center;
 }
 
@@ -556,41 +595,29 @@ a.tile {
   text-align: left;
 }
 
-/* the arrows: drawn like the other icons, sized to the text they follow */
-.tile-header svg {
-  width: 1em;
-  height: 1em;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 /* a list is part of its tile, not a tile of its own */
 .tile ul {
   background: none;
   box-shadow: none;
 }
 
-/* the full-width buttons under the tiles: the log's Export and Delete all, a day's Delete daily attempts */
-#import,
-#export,
-#delete-all,
-#clear-day {
+/* A full-width button: a row tall, on a tile's shadow (the log's Import, Export and Delete all, a day's
+   Clear, the welcome's Next, the share picture's Share) */
+.button-wide {
   width: 100%;
-  min-height: var(--row);   /* a row's height, like the tiles' rows above them */
-  padding: 0 var(--gap-m);
-  box-shadow: var(--tile-shadow);
+  min-height: var(--size-row);
+  padding: 0 var(--space-400);
+  box-shadow: var(--shadow-tile);
 }
 
-#delete-all,
-#clear-day {
-  color: var(--danger);
+/* red text: what can't be undone (the row's swipe-to-delete button is one too) */
+.button-danger,
+.row-delete {
+  color: var(--color-error);
 }
 
 #delete-all {
-  margin-top: var(--gap-s);
+  margin-top: var(--space-200);
 }
 
 
@@ -606,11 +633,11 @@ a.tile {
    icons where the pages' padding puts theirs */
 #record .topbar {
   position: absolute;
-  top: var(--safe-top);
+  top: var(--space-safe-top);
   left: 0;
   right: 0;
   z-index: 1;
-  padding-inline: var(--gap-s);
+  padding-inline: var(--space-200);
 }
 
 #record h1 {
@@ -619,13 +646,13 @@ a.tile {
 
 /* on the camera: icons bigger (24 px), white and shadowed, readable on any picture */
 #record .icon-button {
-  color: var(--text);
+  color: var(--color-text);
   filter: drop-shadow(0 1px 4px #000);
 }
 
 #record .icon-button svg {
-  width: 24px;
-  height: 24px;
+  width: var(--size-icon-600);
+  height: var(--size-icon-600);
 }
 
 #stage,
@@ -650,41 +677,35 @@ a.tile {
 #status,
 #debug {
   position: absolute;
-  top: calc(64px + var(--safe-top));
-  background: var(--scrim);
+  top: calc(var(--size-topbar) + var(--space-safe-top));
+  background: var(--color-scrim);
 }
 
 #status {
   left: 50%;
   transform: translateX(-50%);   /* centred, at most the screen's width less a margin */
   width: max-content;
-  max-width: calc(100% - 2 * var(--gap-m));
+  max-width: calc(100% - 2 * var(--space-400));
   text-align: center;
-  padding: 4px 10px;
-  border-radius: 99px;
-  font-size: 14px;
+  padding: var(--space-100) 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-200);
 }
 
 /* in front of the low frame rate warning */
 #status .alert {
-  width: 1em;
-  height: 1em;
   margin-right: 6px;
   vertical-align: -0.125em;
-  fill: none;
-  stroke: var(--wait);   /* amber, like the skeleton when part of her is out of frame */
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke: var(--color-wait);   /* amber, like the skeleton when part of her is out of frame */
 }
 
 #debug {
-  top: calc(104px + var(--safe-top));   /* below the status line */
-  right: var(--gap-s);
+  top: calc(var(--size-topbar) + 40px + var(--space-safe-top));   /* below the status line */
+  right: var(--space-200);
   margin: 0;
-  padding: 4px var(--gap-s);
-  border-radius: var(--radius-m);
-  font: 12px/1.3 ui-monospace, monospace;
+  padding: var(--space-100) var(--space-200);
+  border-radius: var(--radius-100);
+  font: var(--font-size-100)/1.3 ui-monospace, monospace;
 }
 
 #notice {
@@ -692,9 +713,9 @@ a.tile {
   top: 45%;
   left: 50%;
   transform: translate(-50%, -50%);
-  padding: var(--gap-s) 14px;
-  border-radius: var(--radius-m);
-  background: var(--scrim-strong);
+  padding: var(--space-200) 14px;
+  border-radius: var(--radius-100);
+  background: var(--color-scrim-strong);
 }
 
 /* the timer, just above the bottom bar */
@@ -702,27 +723,27 @@ a.tile {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: calc(var(--safe-bottom) + var(--topbar));
+  bottom: calc(var(--space-safe-bottom) + var(--size-topbar));
 }
 
 /* The bottom bar mirrors the top bar: the same height and side padding, an icon button at either end,
    the lens choice centred between them (the columns stay when one is hidden) */
 .bottombar {
   position: absolute;
-  bottom: var(--safe-bottom);
+  bottom: var(--space-safe-bottom);
   left: 0;
   right: 0;
   z-index: 1;
   display: grid;
-  grid-template-columns: var(--tap) minmax(0, 1fr) var(--tap);
+  grid-template-columns: var(--size-tap) minmax(0, 1fr) var(--size-tap);
   align-items: center;
-  height: var(--topbar);
-  padding-inline: var(--gap-s);
+  height: var(--size-topbar);
+  padding-inline: var(--space-200);
 }
 
 #timer {
   cursor: pointer;          /* tap to start and stop timing by hand */
-  font-size: 5rem;
+  font-size: var(--font-size-display);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -730,7 +751,7 @@ a.tile {
 }
 
 #timer.record {
-  color: var(--gold);   /* just set a new record */
+  color: var(--color-gold);   /* just set a new record */
 }
 
 /* lens choice, centred */
@@ -738,10 +759,10 @@ a.tile {
   grid-column: 2;
   justify-self: center;
   display: flex;
-  gap: var(--gap-s);
-  padding: 4px;
-  border-radius: 99px;
-  background: var(--scrim);
+  gap: var(--space-200);
+  padding: var(--space-100);
+  border-radius: var(--radius-pill);
+  background: var(--color-scrim);
 }
 
 #zoom button {
@@ -750,13 +771,13 @@ a.tile {
   padding: 0;
   border-radius: 50%;
   background: none;
-  font-size: 13px;
-  color: var(--text);
+  font-size: var(--font-size-200);
+  color: var(--color-text);
 }
 
 #zoom button[aria-pressed="true"] {
-  background: var(--scrim-strong);
-  color: var(--text);
+  background: var(--color-scrim-strong);
+  color: var(--color-text);
 }
 
 #mute {
@@ -780,20 +801,20 @@ a.tile {
 
 /* a link inside a setting's description: underlined, so it reads as one */
 .setting-note a {
-  color: var(--text);
+  color: var(--color-text);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 /* running text in a tile: the privacy statement */
 .prose {
-  padding: var(--gap-m);
+  padding: var(--space-400);
   line-height: 1.5;
 }
 
 .prose h2 {
-  margin: var(--gap-l) 0 var(--gap-xs);
-  font-size: 1rem;
+  margin: var(--space-600) 0 var(--space-100);
+  font-size: var(--font-size-300);
   font-weight: 600;
 }
 
@@ -802,8 +823,8 @@ a.tile {
 }
 
 .prose p {
-  margin: var(--gap-s) 0;
-  color: var(--dim);
+  margin: var(--space-200) 0;
+  color: var(--color-dim);
 }
 
 .prose a {
@@ -813,7 +834,7 @@ a.tile {
 /* The summary tile's header is her name, editable: a text field that looks exactly like a header, the
    pencil on the right saying it can be changed. Tapping anywhere on the header edits it. */
 .name-field {
-  gap: var(--gap-s);
+  gap: var(--space-200);
   cursor: text;
 }
 
@@ -830,28 +851,23 @@ a.tile {
 }
 
 .name-field input::placeholder {
-  color: var(--dim);
+  color: var(--color-dim);
 }
 
 .name-field svg {
   flex: none;
-  color: var(--dim);
+  color: var(--color-dim);
 }
 
 /* while typing: the header's bottom line lights up, so it's clear what is being edited */
 .name-field:focus-within {
-  border-bottom-color: var(--dim);
+  border-bottom-color: var(--color-dim);
 }
 
 /* the Profile summary: a label on the left, its value on the right, like an attempt row */
 #summary span {
   flex: 1;
-  color: var(--dim);
-}
-
-/* A tile that is one link, without anything under its title: Setup tips */
-.tile-link .tile-label {
-  border-bottom: 0;
+  color: var(--color-dim);
 }
 
 /* The welcome fills the screen: the top bar, the slides taking up the space, the dots, the button */
@@ -866,7 +882,7 @@ a.tile {
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: var(--gap-s);
+  gap: var(--space-200);
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
@@ -880,7 +896,7 @@ a.tile {
 .slide {
   flex: 0 0 100%;
   margin: 0;
-  padding: var(--gap-l);
+  padding: var(--space-600);
   overflow-y: auto;
   scroll-snap-align: start;
   scroll-snap-stop: always;
@@ -890,19 +906,19 @@ a.tile {
 }
 
 .slide h2 {
-  margin: var(--gap-l) 0 var(--gap-s);
-  font-size: 1.25rem;
+  margin: var(--space-600) 0 var(--space-200);
+  font-size: var(--font-size-400);
   font-weight: 500;
 }
 
 .slide p {
-  margin: 0 0 var(--gap-s);
-  color: var(--dim);
+  margin: 0 0 var(--space-200);
+  color: var(--color-dim);
   line-height: 1.45;
 }
 
 .slide p a {
-  color: var(--text);
+  color: var(--color-text);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -912,19 +928,15 @@ a.tile {
   flex: none;
   width: 100%;
   max-height: 34dvh;
-  fill: none;
-  stroke: var(--text);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke: var(--color-text);
 }
 
 .art .hero {
-  stroke: var(--gold);
+  stroke: var(--color-gold);
 }
 
 .art .soft {
-  stroke: var(--dim);
+  stroke: var(--color-dim);
 }
 
 .art .dashed {
@@ -933,11 +945,11 @@ a.tile {
 }
 
 .art .no {
-  stroke: var(--danger);
+  stroke: var(--color-error);
 }
 
 .art text {
-  fill: var(--dim);
+  fill: var(--color-dim);
   stroke: none;
   font-size: 12px;
 }
@@ -945,7 +957,7 @@ a.tile {
 /* the Share sessions tile on the last slide: the settings' own, not the slide's text */
 .slide .setting {
   flex: none;
-  margin: var(--gap-s) 0 0;
+  margin: var(--space-200) 0 0;
 }
 
 .slide .setting-note {
@@ -957,67 +969,59 @@ a.tile {
   flex: none;
   display: flex;
   justify-content: center;
-  gap: var(--gap-s);
-  padding: var(--gap-m) 0;
+  gap: var(--space-200);
+  padding: var(--space-400) 0;
 }
 
 #slide-dots span {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--dim);
+  background: var(--color-dim);
   opacity: 0.4;
 }
 
 #slide-dots span.on {
-  background: var(--text);
+  background: var(--color-text);
   opacity: 1;
 }
 
 #welcome-next {
   flex: none;
-  width: 100%;
   max-width: 240px;
   margin: 0 auto;
-  min-height: var(--row);
-  box-shadow: var(--tile-shadow);
 }
 
 /* The picture of the record, shown before sharing: over a dark page, the cross top right, Share under it */
 #share-preview {
-  width: min(100vw - 2 * var(--gap-m), 420px);
-  padding: 0 var(--gap-m) var(--gap-m);
+  width: min(100vw - 2 * var(--space-400), 420px);
+  padding: 0 var(--space-400) var(--space-400);
   border: 0;
-  border-radius: var(--tile-radius);
-  background: var(--bg);
-  color: var(--text);
-  box-shadow: var(--tile-shadow);
+  border-radius: var(--radius-tile);
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow: var(--shadow-tile);
 }
 
 #share-preview::backdrop {
-  background: var(--scrim-strong);
+  background: var(--color-scrim-strong);
 }
 
 #share-close {
   display: flex;
-  margin: 0 calc(-1 * var(--gap-s)) 0 auto;
+  margin: 0 calc(-1 * var(--space-200)) 0 auto;
 }
 
 #share-image {
   display: block;
   width: 100%;
   aspect-ratio: 1;
-  border-radius: var(--radius-m);
-  background: var(--bg);
+  border-radius: var(--radius-100);
+  background: var(--color-bg);
 }
 
 #share-send {
-  width: 100%;
-  min-height: var(--row);
-  margin-top: var(--gap-m);
-  background: var(--tile);
-  color: var(--text);
-  box-shadow: var(--tile-shadow);
+  margin-top: var(--space-400);
 }
 
 /* the record's row shares it: the whole row is the button, otherwise looking like the rows around it */
@@ -1026,12 +1030,8 @@ a.tile {
 }
 
 #share-record {
-  display: flex;
-  align-items: center;
-  gap: var(--gap-s);
+  gap: var(--space-200);
   width: 100%;
-  min-height: var(--row);
-  padding: 0 var(--gap-m);
   border-radius: 0;
   background: none;
   font-weight: 400;
@@ -1040,42 +1040,36 @@ a.tile {
 }
 
 #share-record:active {
-  background: var(--tile-alt);
+  background: var(--color-tile-alt);
 }
 
 #share-record svg {
   flex: none;
-  width: 1em;
-  height: 1em;
-  fill: none;
-  stroke: var(--dim);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke: var(--color-dim);
 }
 
 /* a setting's description, under its name and switch */
 .setting-note {
   margin: 0;
-  padding: var(--gap-m);
-  color: var(--dim);
+  padding: var(--space-400);
+  color: var(--color-dim);
 }
 
 .setting-note a {
   display: block;
-  margin-top: var(--gap-m);
+  margin-top: var(--space-400);
   text-decoration: underline;
 }
 
 /* "What gets sent", at the end of the privacy statement: the summary as it is sent */
 .prose pre {
   margin: 0;
-  padding: var(--gap-s);
+  padding: var(--space-200);
   overflow-x: auto;
-  border-radius: var(--radius-m);
-  background: var(--bg);
-  color: var(--dim);
-  font: 12px/1.4 ui-monospace, monospace;
+  border-radius: var(--radius-100);
+  background: var(--color-bg);
+  color: var(--color-dim);
+  font: var(--font-size-100)/1.4 ui-monospace, monospace;
 }
 
 /* On/off switch: a checkbox drawn as a track with a knob, the same on every browser. On: a gold
@@ -1088,10 +1082,10 @@ a.tile {
   width: 44px;
   height: 26px;
   margin: 0;
-  border-radius: 13px;
+  border-radius: var(--radius-pill);
   background: rgba(255, 255, 255, 0.15);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background var(--duration-fast);
 }
 
 .switch::before {
@@ -1102,21 +1096,21 @@ a.tile {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: var(--text);
-  transition: transform 0.2s, background 0.2s;
+  background: var(--color-text);
+  transition: transform var(--duration-fast), background var(--duration-fast);
 }
 
 .switch:checked {
-  background: var(--gold);
+  background: var(--color-gold);
 }
 
 .switch:checked::before {
-  background: var(--bg);
+  background: var(--color-bg);
   transform: translateX(18px);
 }
 
 .switch:focus-visible {
-  outline: 2px solid var(--text);
+  outline: 2px solid var(--color-text);
   outline-offset: 2px;
 }
 
@@ -1138,7 +1132,7 @@ a.tile {
 }
 
 #day-list li[data-id] > * {
-  transition: transform 0.2s ease-out, width 0.2s ease-out;
+  transition: transform var(--duration-fast) ease-out, width var(--duration-fast) ease-out;
 }
 
 #day-list li.dragging > * {
@@ -1161,30 +1155,29 @@ a.tile {
   width: max(80px, -1 * var(--dx));
   padding: 0;
   border-radius: 0;
-  color: var(--danger);
-  background: var(--bg);
+  background: var(--color-bg);
   transform: translateX(max(0px, 80px + var(--dx)));
 }
 
 /* debug box on/off: dim, bright while the box is shown */
 #record #debug-toggle {
-  color: var(--dim);
+  color: var(--color-dim);
 }
 
 #record #debug-toggle[aria-pressed="true"] {
-  color: var(--text);
+  color: var(--color-text);
 }
 
 /* the profile's segments: one pill, the segment on view filled */
 .segments {
   position: relative;      /* for the highlight */
   display: flex;
-  height: var(--row);      /* a row, like the tiles' rows under it; the segments fill it */
-  margin-bottom: var(--gap-s);
-  padding: 4px;
-  border-radius: var(--tile-radius);
-  background: var(--bg);
-  border: 1px solid var(--tile-edge-light);
+  height: var(--size-row);      /* a row, like the tiles' rows under it; the segments fill it */
+  margin-bottom: var(--space-200);
+  padding: var(--space-100);
+  border-radius: var(--radius-tile);
+  background: var(--color-bg);
+  border: 1px solid var(--color-tile-edge-light);
 }
 
 .segments a {
@@ -1193,28 +1186,28 @@ a.tile {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 var(--gap-s);
-  border-radius: var(--radius-m);
-  color: var(--dim);
+  padding: 0 var(--space-200);
+  border-radius: var(--radius-100);
+  color: var(--color-dim);
   font-weight: 500;
 }
 
 .segments a[aria-current] {
-  color: var(--text);
+  color: var(--color-text);
 }
 
 /* the highlight under the segment on view: slides to the one tapped (app.js sets --at, its index) */
 .segments .thumb {
   position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: calc((100% - 8px) / 2);   /* one of the two segments */
-  border-radius: var(--radius-m);
-  background: var(--tile);
-  box-shadow: var(--tile-shadow);
+  top: var(--space-100);
+  bottom: var(--space-100);
+  left: var(--space-100);
+  width: calc((100% - 2 * var(--space-100)) / 2);   /* one of the two segments */
+  border-radius: var(--radius-100);
+  background: var(--color-tile);
+  box-shadow: var(--shadow-tile);
   transform: translateX(calc(var(--at, 0) * 100%));
-  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: transform 0.25s var(--ease-out);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1227,8 +1220,8 @@ a.tile {
    one slides away off the new; the screen that doesn't move stays put */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation-duration: 0.3s;
-  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation-duration: var(--duration-screen);
+  animation-timing-function: var(--ease-out);
 }
 
 [data-slide="in"]::view-transition-new(root) { animation-name: from-right; }
@@ -1250,4 +1243,3 @@ a.tile {
 @keyframes to-bottom { to { transform: translateY(100%); } }
 @keyframes from-top { from { transform: translateY(-100%); } }
 @keyframes to-top { to { transform: translateY(-100%); } }
-

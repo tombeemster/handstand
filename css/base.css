@@ -1,0 +1,292 @@
+/* Handstand: base and shared pieces. Page defaults, the top bar, the icon, the row, the buttons, links,
+   a setting's description and the on/off switch. Needs tokens.css. */
+
+/* 2. Base ------------------------------------------------------------------ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0 auto;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: var(--font-size-300);
+  font-weight: 400;
+  -webkit-user-select: none;
+  user-select: none;
+  max-width: 480px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+h1 {
+  margin: 0;
+  padding: 0;
+  font-size: var(--font-size-200);
+  font-weight: 500;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--color-tile);
+  border-radius: var(--radius-100);
+  box-shadow: var(--shadow-tile);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+
+/* Top bar: the same on every screen. A fixed height, three columns: an icon button on the left (back,
+   or the debug toggle), the title in the middle, an icon button on the right (the profile, or closing
+   the camera); each optional. Everything centred vertically; a long title is cut off with an ellipsis. */
+.topbar {
+  display: grid;
+  grid-template-columns: var(--size-tap) minmax(0, 1fr) var(--size-tap);
+  align-items: center;
+  height: var(--size-topbar);
+}
+
+.topbar > * {
+  grid-row: 1;
+}
+
+.topbar > .icon-button:first-child {
+  grid-column: 1;
+}
+
+.topbar h1 {
+  grid-column: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar h1 ~ .icon-button {
+  grid-column: 3;
+}
+
+/* An icon button: a 48 x 48 tap area with the icon centred in it (20 px; 24 on the camera view) */
+.icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-tap);
+  height: var(--size-tap);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-dim);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A line icon (Lucide): no fill, a 2-unit stroke, round ends and joins. The colour is the stroke, the text
+   colour unless a rule says otherwise. New markup takes the class; the selectors after it are icons the
+   app already draws. */
+.icon,
+.icon-button svg,
+.tile-header svg,
+#start-here,
+#status .alert,
+#share-record svg,
+.art {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* next to text: as big as the text */
+.icon,
+.tile-header svg,
+#status .alert,
+#share-record svg {
+  width: 1em;
+  height: 1em;
+}
+
+.icon-button svg {
+  width: var(--size-icon-500);
+  height: var(--size-icon-500);
+}
+
+
+/* 3. Shared: buttons, rows, icons, links, settings, the switch ----------------- */
+
+/* All-time record, daily highest and average: one colour each, shared by the tiles and the chart */
+.series-record { --series: var(--color-gold); }
+.series-best { --series: var(--color-text); }
+.series-avg { --series: var(--color-text); }
+
+button {
+  padding: var(--space-400);
+  border: 0;
+  border-radius: var(--radius-tile);
+  background: var(--color-tile);
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 600;
+}
+
+/* A row: a fixed height with its contents centred in it, whatever they are. A height, not padding: a badge
+   or dot can't make one row taller than the rest. List rows, tile titles and the record's share button are
+   rows already; new markup takes the class. */
+.row,
+li,
+.tile-label,
+#share-record {
+  display: flex;
+  align-items: center;
+  min-height: var(--size-row);
+  padding: 0 var(--space-400);
+}
+
+/* An attempt: time of day on the left, duration on the right */
+li {
+  gap: var(--space-200);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+
+/* Gold for a record: an attempt that set a record at its time */
+li.best time {
+  color: var(--color-text);
+}
+
+li.best strong {
+  color: var(--color-gold);
+}
+
+li time {
+  flex: 1;
+  color: var(--color-dim);
+  font-variant-numeric: tabular-nums;   /* every time the same width, so what follows lines up */
+}
+
+/* a tag in a row, "manual" on a tapped attempt: on the right, just before the duration (the time takes
+   up the free space, the row's gap-s keeps them apart) */
+li small {
+  padding: 1px var(--space-100);
+  border: 1px solid var(--color-tile-edge-light);
+  border-radius: var(--radius-100);
+  background: var(--color-bg);
+  color: var(--color-dim);
+  font-size: var(--font-size-100);
+  line-height: 1.4;
+}
+
+li strong {
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.text-dim {
+  color: var(--color-dim);
+}
+
+.is-record {
+  color: var(--color-text);
+}
+
+.is-fail{
+  color: var(--color-error);
+}
+
+
+/* Home, the profile and a day's page are scrolling pages; home ends above the Record button */
+#home,
+#day,
+#profile,
+#privacy,
+#welcome {
+  padding: var(--space-safe-top) var(--space-200) calc(var(--space-safe-bottom) + var(--space-600));
+}
+
+#home {
+  padding-bottom: calc(var(--space-safe-button-record) + var(--space-400));
+}
+
+/* a setting's description, under its name and switch */
+.setting-note {
+  margin: 0;
+  padding: var(--space-400);
+  color: var(--color-dim);
+}
+
+.setting-note a {
+  display: block;
+  margin-top: var(--space-400);
+}
+
+/* An inline link: underlined, so it reads as one (a setting's description, the privacy statement, a slide).
+   New markup takes the class. */
+.link,
+.setting-note a,
+.prose a,
+.slide p a {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* On/off switch: a checkbox drawn as a track with a knob, the same on every browser. On: a gold
+   track and a dark knob, slid right */
+.switch {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  position: relative;
+  width: 44px;
+  height: 26px;
+  margin: 0;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+
+.switch::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-text);
+  transition: transform var(--duration-fast), background var(--duration-fast);
+}
+
+.switch:checked {
+  background: var(--color-gold);
+}
+
+.switch:checked::before {
+  background: var(--color-bg);
+  transform: translateX(18px);
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch::before {
+    transition: none;
+  }
+}

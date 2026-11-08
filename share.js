@@ -1,10 +1,10 @@
 // The record as a picture to share: a square PNG, drawn on the phone, sent nowhere by the app. The Record
 // tile as on home in the middle, with "by [her name]" in it if set; the app's name above it, the date
-// below it. Colours come from the style.css tokens.
+// below it. Colours come from the css/tokens.css tokens.
 
 const SIZE = 1080, MARGIN = 80;
 const LINE = 1.2;   // line height
-// The tile: home's Record tile at SCALE times its size (.stat, .stat b, --tile-radius, --tile-shadow)
+// The tile: home's Record tile at SCALE times its size (.stat, .stat b, --radius-tile, --shadow-tile)
 const SCALE = 6, VALUE = 24 * SCALE, PAD = 18 * SCALE, RADIUS = 8 * SCALE, EDGE = 3;
 const MANUAL = 38;   // "manually timed", under the date, when the record was tapped
 const BY = 56, OUTSIDE = 44, GAP = 48;   // "by [name]"; the lines above and below the tile, and their distance
@@ -24,7 +24,7 @@ export async function recordCard({ time, date, name, manual }) {
   await Promise.all(['500 40px Inter', '400 40px Inter', 'italic 400 40px Inter'].map(f => document.fonts.load(f))).catch(() => {});
   const canvas = Object.assign(document.createElement('canvas'), { width: SIZE, height: SIZE });
   const g = canvas.getContext('2d');
-  g.fillStyle = token('--bg');
+  g.fillStyle = token('--color-bg');
   g.fillRect(0, 0, SIZE, SIZE);
   g.textAlign = 'center';
   g.textBaseline = 'middle';
@@ -47,21 +47,21 @@ export async function recordCard({ time, date, name, manual }) {
     g.fillStyle = colour;
     g.fillText(text, SIZE / 2, y);
   };
-  line('Handstand', 500, OUTSIDE, token('--dim'), top - GAP - OUTSIDE * LINE / 2);
+  line('Handstand', 500, OUTSIDE, token('--color-dim'), top - GAP - OUTSIDE * LINE / 2);
   const dateY = top + tileHeight + GAP + OUTSIDE * LINE / 2;
-  line(date, 400, OUTSIDE, token('--dim'), dateY);
-  if (manual) line('manually timed', 'italic 400', MANUAL, token('--dim'), dateY + OUTSIDE * LINE / 2 + 16 + MANUAL * LINE / 2);
+  line(date, 400, OUTSIDE, token('--color-dim'), dateY);
+  if (manual) line('manually timed', 'italic 400', MANUAL, token('--color-dim'), dateY + OUTSIDE * LINE / 2 + 16 + MANUAL * LINE / 2);
 
-  // the tile: its background, the faint edge all round and the lighter top edge of --tile-shadow
+  // the tile: its background, the faint edge all round and the lighter top edge of --shadow-tile
   g.save();
   g.beginPath();
   g.roundRect(x, top, tileWidth, tileHeight, RADIUS);
-  g.fillStyle = token('--tile');
+  g.fillStyle = token('--color-tile');
   g.fill();
   g.clip();
   g.fillStyle = 'rgba(255, 255, 255, 0.06)';
   g.fillRect(x, top, tileWidth, EDGE);
-  g.strokeStyle = token('--tile-edge-light');
+  g.strokeStyle = token('--color-tile-edge-light');
   g.lineWidth = 2 * EDGE;   // half of it falls outside the clip
   g.beginPath();
   g.roundRect(x, top, tileWidth, tileHeight, RADIUS);
@@ -70,7 +70,7 @@ export async function recordCard({ time, date, name, manual }) {
 
   // inside it: the label, the time, and who holds it
   let y = top + PAD;
-  for (const [text, size, colour] of [['Record', labelSize, token('--dim')], [time, valueSize, token('--gold')], [by, bySize, token('--text')]]) {
+  for (const [text, size, colour] of [['Record', labelSize, token('--color-dim')], [time, valueSize, token('--color-gold')], [by, bySize, token('--color-text')]]) {
     if (!text) continue;
     line(text, 400, size, colour, y + size * LINE / 2);
     y += size * LINE;

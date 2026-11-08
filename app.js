@@ -10,6 +10,9 @@ const BONES = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[
 const KEY = 'handstand.attempts', CAMERA_KEY = 'handstand.camera';
 
 const $ = id => document.getElementById(id);
+// A CSS token's value (css/tokens.css), read when it is needed: the styles have loaded by then
+const token = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const tokenMs = name => { const v = token(name); return parseFloat(v) * (v.endsWith('ms') ? 1 : 1000); };
 // The log and settings, kept on this device as JSON. Never throws: in a private window, or with a
 // corrupt value, recall gives the fallback and remember does nothing.
 const recall = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
@@ -154,7 +157,7 @@ $('clear-day').onclick = () => {
 // starts, mis-timed holds). A long swipe, past half the row, deletes it at once. One row is open at a
 // time; a tap elsewhere in the list closes it. The log's day tiles don't delete: the day's page is the one place.
 const DELETE = '<button class="row-delete">Delete</button>';
-const OPEN = 80;   // px: how far an open row is slid, the Delete button's width (style.css)
+const openWidth = () => parseFloat(token('--size-button-row-delete'));   // px: how far an open row is slid, the Delete button's width
 let swipe = null, opened = null;   // the drag under way; the row left open
 const slide = (li, dx) => li.style.setProperty('--dx', dx + 'px');
 function closeRow() {
@@ -167,7 +170,7 @@ $('day-list').onpointerdown = e => {
   if (!li || e.target.closest('.row-delete')) return;
   const wasOpen = li === opened;
   if (!wasOpen) closeRow();
-  swipe = { li, x: e.clientX, y: e.clientY, from: wasOpen ? -OPEN : 0, dx: null, width: li.offsetWidth };   // dx: null until it moves sideways
+  swipe = { li, x: e.clientX, y: e.clientY, from: wasOpen ? -openWidth() : 0, dx: null, width: li.offsetWidth };   // dx: null until it moves sideways
 };
 $('day-list').onpointermove = e => {
   if (!swipe) return;
@@ -190,10 +193,10 @@ $('day-list').onpointerup = $('day-list').onpointercancel = () => {
   if (dx <= -width / 2) {   // a long swipe: slides all the way out, then it's gone
     slide(li, -width);
     opened = null;
-    return setTimeout(() => deleteAttempt(li.dataset.id), 200);   // the slide's duration (style.css)
+    return setTimeout(() => deleteAttempt(li.dataset.id), tokenMs('--duration-fast'));   // the row's slide
   }
-  opened = dx < -OPEN / 2 ? li : null;   // past half the button: snaps open, else back
-  slide(li, opened ? -OPEN : 0);
+  opened = dx < -openWidth() / 2 ? li : null;   // past half the button: snaps open, else back
+  slide(li, opened ? -openWidth() : 0);
 };
 $('day-list').onclick = e => {
   const id = e.target.closest('.row-delete')?.closest('li').dataset.id;
@@ -260,8 +263,10 @@ function route() {
       if (on) a.setAttribute('aria-current', 'page');
       else a.removeAttribute('aria-current');
     }
-    // the segments' highlight slides under the one on view (style.css)
-    document.querySelector('.segments').style.setProperty('--at', links.findIndex(a => a.dataset.segment === segment));
+    // the segments' highlight: as wide as one of them, and slides under the one on view (css/screens.css)
+    const bar = document.querySelector('.segments');
+    bar.style.setProperty('--segments', links.length);
+    bar.style.setProperty('--at', links.findIndex(a => a.dataset.segment === segment));
     render();
   };
   const slide = routed && slideFor(from, screen);
@@ -372,7 +377,7 @@ $('welcome-next').onclick = () => {
 
 // ---- home ----
 function renderHome() {
-  // before her first attempt: only the "Record now" tile (style.css hides the rest)
+  // before her first attempt: only the "Record now" tile (css/screens.css hides the rest)
   $('home').classList.toggle('empty', !attempts.length);
   if (!attempts.length) return;
   const pb = best();
@@ -389,7 +394,7 @@ function renderHome() {
 }
 
 // Every day from her first attempt's to today (at least the last 7), oldest first, as the chart and
-// the Daily highs list (its last 7) show them:
+// the Best attempts list (its last 7) show them:
 // - own: that day's longest hold, or null if she didn't practise; at: when it started (hh:mm)
 // - high: the last practice day's best, carried over days without attempts; null only before her very
 //   first attempt
@@ -435,9 +440,10 @@ function renderChart(chart) {
   const ticks = Array.from({ length: top / step }, (_, i) => (i + 1) * step);
   // Two drawings at one scale: the seconds labels, L wide (just room for "8 s", later "10 s"), and
   // beside them the plot, 7 days to the visible W - L and as many more as there are days, scrolled.
-  // style.css gives the labels the same L / W of the tile's width, so the units match.
+  // The labels get the same L / W of the tile's width (--seconds-width), so the units match.
   const W = 320, H = 140, L = 30, T = 10, B = 24;
   const dayW = (W - L) / 7, plotW = days.length * dayW;
+  $('chart').style.setProperty('--seconds-width', `${L / W * 100}%`);
   const x = i => (i + 0.5) * dayW, y = v => T + (1 - v / top) * (H - T - B);
 
   // the practice days joined by a solid line, the area under it fading out downwards; then, if today
@@ -868,7 +874,7 @@ function onFrame(now) {
 
 // The skeletons as the model sees them, this frame. (A One Euro filter smoothed her skeleton for a
 // calmer look; dropped as not worth its code. Detection always used the raw pose.)
-// The skeleton's colours: the style.css tokens, read on the first frame (the styles have loaded by then)
+// The skeleton's colours: tokens from css/tokens.css, read on the first frame (the styles have loaded by then)
 let skin = null;
 function draw(lm, poses) {
   const cv = $('overlay'), v = $('video'), g = cv.getContext('2d'), s = detector.state;
@@ -884,9 +890,9 @@ function draw(lm, poses) {
     }
     g.stroke();
   };
-  skin ??= Object.fromEntries(['--dim', '--wait', '--ready'].map(t => [t, getComputedStyle(document.documentElement).getPropertyValue(t).trim()]));
+  skin ??= Object.fromEntries(['--color-dim', '--color-wait', '--color-ready'].map(t => [t, token(t)]));
   g.globalAlpha = 0.5;   // ignored poses (phantoms, bystanders): faint
-  for (const p of poses) if (p !== lm) skeleton(p, skin['--dim']);
+  for (const p of poses) if (p !== lm) skeleton(p, skin['--color-dim']);
   g.globalAlpha = 1;
   const hint = lm && s.startTs === null ? framingHint(lm) : null;
   const warn = s.startTs === null && slow;
@@ -894,7 +900,7 @@ function draw(lm, poses) {
   // only when it changes (the icon has no text, so textContent is the message alone)
   if ($('status').textContent !== status) $('status').innerHTML = (warn ? ALERT : '') + status;
   // dim until she's been seen standing: the model can find a "person" in a chair, which isn't ready for anything
-  if (lm) skeleton(lm, hint ? skin['--wait'] : s.seenStanding || s.startTs !== null ? skin['--ready'] : skin['--dim']);   // amber: part of her is out of frame
+  if (lm) skeleton(lm, hint ? skin['--color-wait'] : s.seenStanding || s.startTs !== null ? skin['--color-ready'] : skin['--color-dim']);   // amber: part of her is out of frame
 }
 
 // Frame rate check. The bake-off on all recorded clips timed 59 of 60 attempts at 30 fps, but only 44
@@ -1097,7 +1103,7 @@ addEventListener('pageshow', e => { if (e.persisted && live) openSession(); });
 // Left alone on the record screen for IDLE_MS (no attempt, no near miss, no tap): back to home, which
 // ends the session and sends its summary, and turns the camera off. Never during an attempt. Seeing
 // someone doesn't count as active: that would keep a forgotten camera on for good.
-const IDLE_MS = 2 * 60 * 1000;
+const IDLE_MS = 3 * 60 * 1000;
 let lastActive = 0;
 $('record').addEventListener('pointerdown', () => { lastActive = Date.now(); });
 setInterval(() => {

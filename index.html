@@ -7,7 +7,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#11131a">
 <title>Handstand</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/screens.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
 
 </head>
@@ -88,7 +90,7 @@
     <div class="tile-label tile-header" id="day-title"></div>
     <ul id="day-list"></ul>
   </div>
-  <button id="clear-day">Clear</button>
+  <button id="clear-day" class="button-wide button-danger">Clear</button>
 </section>
 
 <!-- the Profile page, opened from the icon on home: the attempts (#profile, also #profile/log) and the
@@ -106,10 +108,10 @@
   <div id="segment-log">
     <div id="days"></div>
     <!-- import: only on an empty log. The button opens the hidden file picker -->
-    <button id="import">Import (.csv)</button>
+    <button id="import" class="button-wide">Import (.csv)</button>
     <input id="import-file" type="file" accept=".csv,text/csv" hidden>
-    <button id="export">Export (.csv)</button>
-    <button id="delete-all">Delete all attempts</button>
+    <button id="export" class="button-wide">Export (.csv)</button>
+    <button id="delete-all" class="button-wide button-danger">Delete all attempts</button>
   </div>
   <div id="segment-settings">
     <div class="tile">
@@ -133,8 +135,9 @@
     </p>
   </div>
   <!-- the welcome again. Arrow icon: Lucide arrow-right -->
-  <a class="tile tile-link" href="#welcome">
-    <div class="tile-label tile-header">Watch the welcome tutorial<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+  <a class="tile setting" href="#welcome">
+    <div class="tile-label tile-header">Welcome tutorial<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+    <p class="setting-note">How to set up the phone and get started.</p>
   </a>
   </div>
 </section>
@@ -246,14 +249,14 @@
     </article>
   </div>
   <div id="slide-dots" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-  <button id="welcome-next">Next</button>
+  <button id="welcome-next" class="button-wide">Next</button>
 </section>
 
 <!-- the record's picture, to look at before choosing where it goes. Icon: Lucide x -->
 <dialog id="share-preview" aria-label="Share her record">
   <button id="share-close" class="icon-button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   <img id="share-image" alt="The picture of her record">
-  <button id="share-send">Share</button>
+  <button id="share-send" class="button-wide">Share</button>
 </dialog>
 
 <script type="module" src="app.js"></script>
