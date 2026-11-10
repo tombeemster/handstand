@@ -22,6 +22,7 @@
   height: var(--size-button-record);
   padding: 0 24px 0 64px;   /* on the left: the well's 14 + 44 and a gap */
   border-radius: var(--radius-pill);
+  border: 1px solid var(--color-tile-edge);
   background: var(--color-bg);
   box-shadow: var(--shadow-tile), 0 6px 16px rgba(0, 0, 0, 0.5);
   -webkit-tap-highlight-color: transparent;

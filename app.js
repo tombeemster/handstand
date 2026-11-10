@@ -354,7 +354,7 @@ const slideLeft = i => $('slides').children[i].offsetLeft - $('slides').children
 const lastSlide = () => $('slides').children.length - 1;
 function showSlide() {
   [...$('slide-dots').children].forEach((dot, i) => dot.classList.toggle('on', i === slideAt));
-  $('welcome-next').textContent = slideAt === 0 ? 'How to start' : slideAt >= lastSlide() ? 'Start' : 'Next';
+  $('welcome-next').textContent = slideAt === 0 ? 'Next' : slideAt >= lastSlide() ? 'Get started' : 'Next';
 }
 function renderWelcome() {
   $('welcome-share').checked = shareSummaries;

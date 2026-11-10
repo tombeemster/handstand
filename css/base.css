@@ -160,12 +160,6 @@ li {
   border-bottom: 1px solid var(--color-divider);
 }
 
-
-/* Gold for a record: an attempt that set a record at its time */
-li.best time {
-  color: var(--color-text);
-}
-
 li.best strong {
   color: var(--color-gold);
 }
