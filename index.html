@@ -34,14 +34,14 @@
   </div>
   <div id="tiles">
     <!-- a tap lights up the tile's line in the chart (data-line) -->
-    <div class="tile stat series-record" data-line="series-record">Record <b id="best">–</b></div>
-    <div class="tile stat series-avg" data-line="series-avg">Average <b id="average">–</b></div>
+    <div class="tile stat series-record" data-line="series-record"><span class="stat-title">Best</span> <b id="best">–</b></div>
+    <div class="tile stat series-avg" data-line="series-avg"><span class="stat-title">Average</span> <b id="average">–</b></div>
   </div>
   <figure id="chart" class="tile"></figure>
-  <!-- the chart's seven days as a list, today on top; the whole tile opens the log, like a log's day
+  <!-- her last 5 practice days as a list, the latest on top; the whole tile opens the log, like a log's day
        tile opens its day. Arrow icon: Lucide arrow-right -->
   <a class="tile" href="#profile/log">
-    <div class="tile-label tile-header">Best attempts <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+    <div class="tile-label tile-header">Recent records <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
     <ul id="highs"></ul>
   </a>
   <!-- the way to the record screen: a camera-style REC button fixed at the bottom of home (drawn in CSS) -->

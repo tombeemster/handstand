@@ -2,7 +2,7 @@
 // privacy page shows. Pure: no page, no clock, no storage, so it can be tested in Node.
 // No ids of any kind, no times of day: a summary can't be linked to a person, a phone or another summary.
 
-export const APP_VERSION = '1.0.1';
+export const APP_VERSION = '1.0.2';
 const MAX_MS = 600000;   // 10 minutes: no duration sent is longer (the Worker checks the same)
 // Each near miss reason of detect.js (MISS_REASONS) and the count it's sent as
 export const MISS_FIELDS = {

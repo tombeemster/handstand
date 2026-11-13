@@ -1,5 +1,6 @@
 import { createDetector, framingHint, VIS, ANKLE_VIS, MIN_MS, MERGE_MS, MERGE_LATE_MS } from './detect.js';
 import { sessionSummary } from './summary.js';
+import { averageBest, RECENT_DAYS } from './stats.js';
 import { toCsv, parseCsv } from './csv.js';
 import { recordCard } from './share.js';
 import { valid as validSummary } from './worker/index.js';
@@ -49,11 +50,9 @@ function records() {
   }
   return { ids, current };
 }
-// The average of every attempt ever: shown in the average tile and as a line across the chart
-const overallAverage = () => {
-  const list = counted();
-  return list.length ? list.reduce((s, a) => s + a.duration_ms, 0) / list.length : null;
-};
+// The average best now: the latest value of its line (stats.js), the mean of her last 5 practice days' best
+// holds. Shown in the Average best tile and the Profile summary; the line itself is drawn in renderChart.
+const averageNow = () => practiceDays().at(-1)?.avg ?? null;
 
 // Saving redraws only the screen on view; the others are drawn when you go to them (see route).
 // Redrawing every screen on every landing cost a stutter while the camera ran, more as the log grows.
@@ -68,8 +67,8 @@ const stamp = a => `${new Date(a.started_at).toLocaleDateString('en-GB', { day: 
 // A day as its tile title: "Friday 23 October", in the browser's language
 const dayLabel = day => new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
-// The tag of an attempt that set a record at its time; gold for the one that holds it now
-const RECORD_TAG = '<small class="is-record">record</small>', OLD_RECORD_TAG = '<small>record</small>';
+// The tag of an attempt that set a record at its time;
+const RECORD_TAG = '<small class="is-best">best</small>', OLD_RECORD_TAG = '<small>record</small>';
 
 // One attempt as a list row: its date and time, its duration; cls: 'best' (a record), 'top' or ''.
 // rec: records(), for the record tags; end: more inside the row (a day's Delete button).
@@ -287,12 +286,12 @@ function renderProfile() {
   $('athlete-name').value = athleteName;
   $('profile-title').textContent = athleteName || 'Profile';
   const manual = attempts.filter(a => a.method === 'manual').length;
-  const pb = best(), avg = overallAverage();
+  const pb = best(), avg = averageNow();
   $('summary').innerHTML = [
     ['Attempts', attempts.length + (manual ? ` (${manual} manual)` : '')],
     ['Not timed', notTimed.length],
     ['Record', pb ? fmt(pb) + 's' : '–'],
-    ['Average', avg ? fmt(avg) + 's' : '–'],
+    ['Average best', avg ? fmt(avg) + 's' : '–'],
   ].map(([label, value]) => label === 'Record' && pb
     // the record's row is the share button, with the forward icon after the value
     ? `<li class="share-row"><button id="share-record" aria-label="Share her record of ${value}"><span>${label}</span>${records().current.method === 'manual' ? '<small>manual</small>' : ''}<strong>${value}</strong>${FORWARD}</button></li>`
@@ -382,102 +381,114 @@ function renderHome() {
   if (!attempts.length) return;
   const pb = best();
   $('best').textContent = pb ? fmt(pb) + ' s' : '–';
-  const avg = overallAverage();
+  const days = practiceDays();
+  const avg = days.at(-1)?.avg;
   $('average').textContent = avg ? fmt(avg) + ' s' : '–';
-  const days = chartDays();
   renderChart(days);
-  // the chart's last 7 days as a list, today on top: each day's own best, or nothing if she didn't practise
-  // (showing the carried-over best there, in dim, was tried: it read as a time logged that day)
-  $('highs').innerHTML = days.slice(-7).reverse().map(d => `<li class="${d.record ? 'best' : ''}">
-    <time>${d.date.toLocaleDateString(undefined, { weekday: 'long' })}${d.at ? ` - ${d.at}` : ''}</time>${d.record ? RECORD_TAG : ''}<strong>${d.own ? fmt(d.own) + 's' : ''}</strong>
+  // the last 5 practice days as a list, newest on top: each day's own best. A day a week or more back shows
+  // its date instead of its weekday, which would repeat one of the days above it.
+  $('highs').innerHTML = days.slice(-RECENT_DAYS).reverse().map(d => `<li class="${d.record ? 'best' : ''}">
+    <time>${d.ago < 7 ? d.date.toLocaleDateString(undefined, { weekday: 'long' }) : d.date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} - ${d.at}</time>${d.record ? RECORD_TAG : ''}<strong>${fmt(d.own)}s</strong>
   </li>`).join('');
 }
 
-// Every day from her first attempt's to today (at least the last 7), oldest first, as the chart and
-// the Best attempts list (its last 7) show them:
-// - own: that day's longest hold, or null if she didn't practise; at: when it started (hh:mm)
-// - high: the last practice day's best, carried over days without attempts; null only before her very
-//   first attempt
-// - record: the day her current all-time record was set (at most one day)
-function chartDays() {
-  const dayKey = d => localIso(d).slice(0, 10);
+// Her practice days: the days with a counted attempt, and only those (no empty days between them), oldest
+// first, as the chart and the Daily records list show them:
+// - own: that day's longest counted hold; at: when it started (hh:mm)
+// - record: whether her current all-time record was set that day
+// - avg: the average best on that day (stats.js): the mean of the longest holds over it and the 4 practice
+//   days before it
+// - ago: how many days back it was
+function practiceDays() {
   const tops = new Map();   // each day's longest attempt (the first of equals)
   for (const a of counted()) {
     const day = a.started_at.slice(0, 10);
     if (!(tops.get(day)?.duration_ms >= a.duration_ms)) tops.set(day, a);
   }
-  const first = attempts.reduce((t, a) => a.started_at < t ? a.started_at : t, dayKey(new Date()));
-  const count = Math.max(7, Math.round((new Date(dayKey(new Date()) + 'T12:00') - new Date(first.slice(0, 10) + 'T12:00')) / 864e5) + 1);
-  const days = Array.from({ length: count }, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (count - 1) + i); return d; });
-
   const recordDay = records().current?.started_at.slice(0, 10);
-  let high = null;
-  return days.map(date => {
-    const top = tops.get(dayKey(date));
-    const own = top?.duration_ms ?? null, at = top?.started_at.slice(11, 16) ?? null;
-    if (own) high = own;
-    return { date, own, at, high, record: dayKey(date) === recordDay };
+  const todayNoon = new Date(localIso(new Date()).slice(0, 10) + 'T12:00');
+  const rows = [...tops.keys()].sort().map(day => {
+    const top = tops.get(day), date = new Date(day + 'T12:00');
+    return { date, own: top.duration_ms, at: top.started_at.slice(11, 16), record: day === recordDay, ago: Math.round((todayNoon - date) / 864e5) };
   });
+  const avgs = averageBest(rows.map(r => r.own));
+  return rows.map((r, i) => ({ ...r, avg: avgs[i] }));
 }
 
-// The chart, over chartDays(), in the colours of the home tiles. It shows 7 days at a time, today on
-// the right; swipe right for the weeks before. The seconds labels stay put on the left.
-// - daily high: a solid line from practice day to practice day, straight across any days between, with
-//   the area under it. From the last practice day to today a dashed line carries that value on, without
-//   an area: it only says nothing newer has been logged, and it's gone as soon as she practises again.
-//   One dot in the record colour marks the day her current record was set, where the line meets the
-//   record line.
-// - average of all her attempts ever (the Average tile) and the all-time record: solid horizontal lines.
-//   (A line through each day's average was tried: it barely moves, the overall value says as much.)
+// The chart, over practiceDays(), in the colours of the home tiles. One point per practice day, with no
+// calendar between them, the latest on the right. It shows 5 at a time; swipe right for the earlier ones. The
+// seconds labels stay put on the left. Nothing is written along the bottom: the points are practice days,
+// not dates (the Daily records list under it has them).
+// - her best hold on each practice day: a faint dashed line joining them. Between it and the record line
+//   sits the gap, an area that is strongest at the daily line and fades out towards the record line. One dot
+//   in the record colour marks the day her current record was set, where the line meets the record line.
+// - the all-time record: a horizontal line, dashed up to that dot and solid after it.
+// - the average best (the Average best tile): a full white smooth curve through the practice days, ending in a
+//   dot at its latest value, then continuing dashed to the right edge. On each day it is the mean of the longest
+//   holds over it and the 4 before it. (A line through each day's average of all her attempts was tried: it barely
+//   moves. This one follows her progress.)
 function renderChart(chart) {
-  const days = chart.map(d => d.date), bests = chart.map(d => d.high), recordAt = chart.map(d => d.record);
-  const avg = overallAverage(), allTime = best();
+  const allTime = best();
   // the scale: gridlines and labels at an even number of whole seconds apart, at most 8 of them,
   // the top one at or just above the best (6.7 s: 2, 4, 6, 8 · 72 s: 10, 20, … 80)
-  const highest = Math.max(1, allTime, ...bests.filter(v => v !== null));
+  const highest = Math.max(1, allTime, ...chart.map(d => d.own));
   const step = [2, 4, 10, 20, 30, 60, 120, 300, 600].map(s => s * 1000).find(s => highest <= s * 8) ?? Math.ceil(highest / 8 / 60000) * 60000;
   const top = Math.ceil(highest / step) * step;
   const ticks = Array.from({ length: top / step }, (_, i) => (i + 1) * step);
   // Two drawings at one scale: the seconds labels, L wide (just room for "8 s", later "10 s"), and
-  // beside them the plot, 7 days to the visible W - L and as many more as there are days, scrolled.
-  // The labels get the same L / W of the tile's width (--seconds-width), so the units match.
-  const W = 320, H = 140, L = 30, T = 10, B = 24;
-  const dayW = (W - L) / 7, plotW = days.length * dayW;
+  // beside them the plot, RECENT_DAYS points to the visible W - L and as many more as there are practice days,
+  // scrolled. The labels get the same L / W of the tile's width (--seconds-width), so the units match.
+  // With fewer practice days than that, they sit at the right, the latest on the far right.
+  const W = 320, H = 140, L = 30, T = 10, B = 12;
+  const dayW = (W - L) / RECENT_DAYS, slots = Math.max(RECENT_DAYS, chart.length), plotW = slots * dayW;
   $('chart').style.setProperty('--seconds-width', `${L / W * 100}%`);
-  const x = i => (i + 0.5) * dayW, y = v => T + (1 - v / top) * (H - T - B);
+  const x = i => (slots - chart.length + i + 0.5) * dayW, y = v => T + (1 - v / top) * (H - T - B);
 
-  // the practice days joined by a solid line, the area under it fading out downwards; then, if today
-  // isn't one of them, the dashed line carrying the last value on to today
-  const pts = chart.map((d, i) => d.own ? [x(i), y(d.own)] : null).filter(Boolean);
+  // the practice days joined by a line, and the gap up to the record line as an area fading out upwards
+  const pts = chart.map((d, i) => [x(i), y(d.own)]);
   let dailyLine = '';
   if (pts.length > 1) {
     const line = 'M' + pts.map(([px, py]) => `${px},${py}`).join(' L');
-    dailyLine += `<linearGradient id="best-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="fill-top"/><stop offset="1" class="fill-bottom"/></linearGradient>
-      <path class="area" fill="url(#best-fill)" d="${line} L${pts.at(-1)[0]},${y(0)} L${pts[0][0]},${y(0)} Z"/>
+    const gap = `${line} L${pts.at(-1)[0]},${y(allTime)} L${pts[0][0]},${y(allTime)} Z`;
+    dailyLine = `<linearGradient id="best-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="fill-top"/><stop offset="1" class="fill-bottom"/></linearGradient>
+      <path class="area" fill="url(#best-fill)" d="${gap}"/>
       <path class="line" d="${line}"/>`;
   }
-  if (pts.length && pts.at(-1)[0] < x(days.length - 1)) {
-    const [lastX, lastY] = pts.at(-1);
-    dailyLine += `<path class="line carried" d="M${lastX},${lastY} L${x(days.length - 1)},${lastY}"/>`;
-  }
-  const dots = bests.map((v, i) => recordAt[i] ? `<circle cx="${x(i)}" cy="${y(v)}" r="3.75"/>` : '').join('');   // 7.5 units across, about 7.5 px
-  // class level: what a tap on the matching home tile lights up (see the tiles' onclick)
-  const level = (value, cls) => value ? `<g class="${cls} level"><line class="line" x1="0" y1="${y(value)}" x2="${plotW}" y2="${y(value)}"/></g>` : '';
+  // a line through the points as a smooth curve: every point has a horizontal tangent, so the curve stays
+  // between its neighbours and never overshoots (it can't cross the record line or dip below the axis)
+  const smooth = p => 'M' + p[0].join(',') + p.slice(1).map(([px, py], i) => {
+    const [qx, qy] = p[i], mx = (qx + px) / 2;
+    return ` C${mx},${qy} ${mx},${py} ${px},${py}`;
+  }).join('');
+  const dotR = 3;
+  // the average best: a point on each practice day, joined by a smooth curve
+  const endX = x(chart.length - 1), endY = y(chart.at(-1)?.avg);
+  const averageLine = chart.length > 1
+    ? `<g class="series-avg level">
+        <path class="line" d="${smooth(chart.map((d, i) => [x(i), y(d.avg)]))}"/>
+        <line class="line ahead" x1="${endX}" y1="${endY}" x2="${plotW}" y2="${endY}"/></g>` : '';
+  // the record line, split at the record dot: dashed before it, solid after. Class level: what a tap on the
+  // matching home tile lights up (see the tiles' onclick)
+  const recordAt = chart.findIndex(d => d.record), cut = recordAt < 0 ? plotW : x(recordAt);
+  const recordLine = allTime ? `<g class="series-record level">
+      <line class="line before" x1="0" y1="${y(allTime)}" x2="${cut}" y2="${y(allTime)}"/>
+      <line class="line" x1="${cut}" y1="${y(allTime)}" x2="${plotW}" y2="${y(allTime)}"/></g>` : '';
+  const dailyDot = chart.length > 1
+    ? `<circle cx="${x(chart.length - 1)}" cy="${y(chart.at(-1).own)}" r="${dotR}"/>` : '';
+  const dots = chart.map((d, i) => d.record ? `<circle cx="${x(i)}" cy="${y(d.own)}" r="${dotR}"/>` : '').join('');
 
-  const labels = days.map((d, i) => `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${d.toLocaleDateString(undefined, { weekday: 'narrow' })}</text>`).join('');
   $('chart').innerHTML = `<svg class="seconds" viewBox="0 0 ${L} ${H}" aria-hidden="true">
     ${ticks.map(v => `<text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v / 1000} s</text>`).join('')}
   </svg>
-  <div class="scroller"><svg viewBox="0 0 ${plotW} ${H}" style="width: ${days.length / 7 * 100}%" role="img" aria-label="Best hold per day, the all-time record and the overall average">
+  <div class="scroller"><svg viewBox="0 0 ${plotW} ${H}" style="width: ${slots / RECENT_DAYS * 100}%" role="img" aria-label="Her best hold on each practice day, the all-time record and the average best over ${RECENT_DAYS} practice days">
     <line class="axis" x1="0" y1="${y(0)}" x2="${plotW}" y2="${y(0)}"/>
     ${ticks.map(v => `<line class="grid" x1="0" y1="${y(v)}" x2="${plotW}" y2="${y(v)}"/>`).join('')}
-    <g class="series-best">${dailyLine}</g>
-    ${level(avg, 'series-avg')}${level(allTime, 'series-record')}
+    <g class="series-best">${dailyLine}${dailyDot}</g>
+    ${averageLine}${recordLine}
     <g class="series-record">${dots}</g>
-    ${labels}
   </svg></div>`;
   const scroller = $('chart').querySelector('.scroller');
-  scroller.scrollLeft = scroller.scrollWidth;   // start at today
+  scroller.scrollLeft = scroller.scrollWidth;   // start at the latest
 }
 
 // A tap on the Record or Average tile lights up its line in the chart, to show which is which

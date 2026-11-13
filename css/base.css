@@ -128,8 +128,8 @@ ul {
 
 /* All-time record, daily highest and average: one colour each, shared by the tiles and the chart */
 .series-record { --series: var(--color-gold); }
-.series-best { --series: var(--color-text); }
-.series-avg { --series: var(--color-text); }
+.series-best { --series: var(--color-dim); }
+.series-avg { --series: var(--color-text);  }
 
 button {
   padding: var(--space-400);
@@ -191,7 +191,7 @@ li strong {
   color: var(--color-dim);
 }
 
-.is-record {
+.is-best {
   color: var(--color-text);
 }
 

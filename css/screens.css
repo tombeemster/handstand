@@ -21,10 +21,10 @@
   align-items: center;
   height: var(--size-button-record);
   padding: 0 24px 0 64px;   /* on the left: the well's 14 + 44 and a gap */
+  border: 1px solid var(--color-tile-edge-light);
   border-radius: var(--radius-pill);
-  border: 1px solid var(--color-tile-edge);
   background: var(--color-bg);
-  box-shadow: var(--shadow-tile), 0 6px 16px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-tile), 0 6px 16px rgba(0, 0, 0, 0.2);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -117,8 +117,9 @@
   display: none;
 }
 
-/* a tap on the Record or Average tile: its line flickers off and on 3 times */
-#chart .level.flash .line {
+/* a tap on the Record or Average best tile: its line flickers off and on 3 times */
+#chart .level.flash .line,
+#chart .level.flash circle {
   animation: flicker 0.6s step-end;
 }
 
@@ -134,7 +135,7 @@
 
 #chart .axis {
   stroke: var(--color-dim);
-  opacity: 0.3;
+  opacity: 0.1;
 }
 
 
@@ -144,36 +145,40 @@
   stroke-width: 1;
 }
 
-/* the daily line from the last practice day to today: the last best carried on, not a time of those days */
-#chart .carried {
-  stroke-dasharray: 3 4;
+/* the daily best line: faint and dashed (a different dash from the record's), so the lines that matter
+   stay readable; the average best keeps the plain line above, in full white */
+#chart .series-best .line,
+#chart .series-avg .ahead {
+  opacity: 0.6;
 }
 
-/* the average line: still the series-avg colour, but quieter than the record line */
-#chart .series-avg .line {
-  stroke-opacity: 0.4;
+/* the record line up to the record dot, and the average line past its last dot */
+#chart .series-record .before,
+#chart .series-avg .ahead {
+  stroke-dasharray: 2 2;
 }
 
 
 /* a faint line at each axis label */
 #chart .grid {
   stroke: var(--color-dim);
-  opacity: 0.15;
+  opacity: 0.1;
 }
 
-/* under the daily-best line: the series colour fading out downwards */
+/* the gap between the daily-best line and the record line: the series colour, strongest at the daily
+   line and fading out towards the record line (the gradient runs from the record line, 0, downwards) */
 #chart .area {
   stroke: none;
 }
 
 #chart .fill-top {
   stop-color: var(--series);
-  stop-opacity: 0.2;
+  stop-opacity: 0;
 }
 
 #chart .fill-bottom {
   stop-color: var(--series);
-  stop-opacity: 0;
+  stop-opacity: 0.2;
 }
 
 #chart circle {
@@ -249,6 +254,12 @@
   padding: var(--space-600);
   color: var(--color-dim);
   text-align: center;
+  font-size: var(--font-size-200);
+}
+
+.stat-title {
+  font-size: var(--font-size-300);
+  color: var(--color-text);
 }
 
 .stat b {
@@ -257,6 +268,7 @@
   font-weight: 400;
   color: var(--series);
   font-variant-numeric: tabular-nums;
+  margin: var(--space-100) 0;
 }
 
 

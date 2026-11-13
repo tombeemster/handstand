@@ -14,14 +14,6 @@ npx serve -l tcp://127.0.0.1:3000 .
 Open http://localhost:3000. The page needs a server: opening `index.html` directly doesn't work.
 On `localhost` the camera works without HTTPS.
 
-To test on a phone, the page must be on HTTPS. A temporary tunnel (needs `cloudflared`), in a second terminal:
-
-```bash
-cloudflared tunnel --url http://localhost:3000
-```
-
-Each address (localhost, tunnel, live site) keeps its own log in the browser.
-
 ## Files
 
 - `index.html`: markup of the three screens (home, record, log)
