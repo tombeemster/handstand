@@ -1,7 +1,7 @@
 # Handstand
 
 A phone web app that times handstands automatically with the camera and keeps a log.
-Pose detection runs on the device (MediaPipe); nothing leaves the phone.
+Pose detection runs on the device (MediaPipe); video is never stored or uploaded.
 
 Live: https://tombeemster.github.io/handstand/
 
@@ -16,10 +16,13 @@ On `localhost` the camera works without HTTPS.
 
 ## Files
 
-- `index.html`: markup of the three screens (home, record, log)
-- `style.css`: styles
+- `index.html`: markup for the app screens
+- `css/`: styles
 - `app.js`: screens, log, chart, camera, sound
-- `detect.js`: detection rules: when a handstand starts and ends
+- `detect.js`: pose tracking and detection rules for attempts and near misses
+- `summary.js`: builds an anonymous session summary
+- `stats.js`: calculates practice-day highs and the average best
+- `csv.js`: imports and exports the attempt log
 - `tools/replay.py`, `tools/replay.mjs`: run recorded videos through the app's own rules
 
 ## Test on recordings

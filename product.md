@@ -2,48 +2,79 @@
 
 A phone web app that times handstands hands-free with the camera and keeps a log, so nobody has to work a stopwatch and a child can see her progress.
 
-## Who it's for
+## Register
 
-One athlete (a child) and one operator (a parent), at home, most days. The phone stands in a tripod 2–4 m away, filming her whole body. Sessions last 5–10 minutes, with up to 50 attempts.
+product
 
-## Core loop
+## Users
 
-Tap **Record** on home → she kicks up → the timer starts by itself and counts → she lands → the attempt is logged, a level chime plays and the time is spoken ("4 punt 8"). **Home** shows the record, the average best, a chart of her best hold on each practice day and the last 5 of them as a list (Recent best); the icon top right opens **Profile**: Settings (her name, a summary, the settings) and Attempts (every day; a day's page is where attempts are deleted).
+One athlete (a child) and one operator (a parent), practicing at home most days. The phone stands in a tripod 2–4 m away, filming her whole body. Sessions last 5–10 minutes, with up to 50 attempts. The parent operates the phone; the child practices and follows her progress.
 
-## Principles
+## Problem
 
-These decide every feature.
+The parent needs to film and supervise practice while also timing each attempt. A separate stopwatch competes for attention, and without a clear record of practice the child has less visible evidence of progress. Handstands also need to be distinguished from false starts and poses that should not count.
 
-1. **Hands-free and honest.** The timer starts and stops by itself, and only a real handstand counts: kicked up from standing, upside down, steady. A missed handstand is bad; a counted hack (headstand, sitting kick) is worse.
-2. **Evidence over guesses.** Every detection rule is measured on real recordings before it ships, and rules that were tried and dropped stay recorded, so nobody tries them again.
-3. **Private by design.** The camera is analysed on the phone and never recorded or uploaded. The log and the athlete's name live on the phone (the name only leaves in a record picture the parent chooses to share, never in the analytics). No accounts. The only thing that may leave the phone is an anonymous summary per session, and only if the parent turns that on.
-4. **Light and simple.** A static site: plain HTML, CSS and JavaScript, no build step, no framework. It has to run smoothly on an iPhone.
-5. **Motivating, not busy.** Records stand out in gold, feedback is sound and voice, and the screens stay calm: no tab bar, one Record button, a few tiles, one chart.
+## Product Purpose
 
-## Scope
+Handstand uses the phone camera to start and stop timing automatically, logs attempts, and presents records and practice-day highs so the child can see progress without the parent working a stopwatch.
 
-**In:** automatic timing; manual timing by tapping the timer (a fallback, and for testing sounds), left out of the stats unless a setting counts it; a log with CSV export, and CSV import on an empty log (to move to a new phone); deleting on a day's page (swipe a row, a long swipe for instant, or the whole day) and deleting everything from the log; empty states before the first attempt; record and average best tiles, a chart of her best hold on each practice day (5 on screen, swipe back for the earlier ones) and a Recent best list, tied together (how: design.md); level chimes plus the spoken time; an error sound and "Not timed" right after a near miss, so she can go again, and a log of what wasn't timed with its reason; a warning when the frame rate is too low to time reliably; front/back camera, 0.5×/1× lens, mute; a Profile with her name (typed in by the parent), a summary (attempts, record, average best) and the settings; an opt-in switch for sharing anonymous session totals, with a privacy page that shows exactly what is sent; sharing her record as a picture; a short welcome on first use, for what the screens can't explain (an intro and three slides: where to put the phone, what helps the tracking, what stays private), reopened from the settings (Welcome tutorial); sliding screen transitions.
+Success means timing real handstands hands-free, not counting false starts or poses such as headstands and sitting kicks, and making progress understandable across practice days. Detection changes are checked against real recordings; a change is accepted only if it improves results without losing a correctly handled clip.
 
-**Known limit:** swiping the app away very quickly after switching apps can lose that session's summary. Accepted: the row count runs slightly low, no wrong numbers get stored.
+## Brand Personality / Tone
 
-**Out, for now:** multiple athletes, accounts or sync, form scoring, storing video, the App Store (no Mac available), offline caching.
+Calm, simple, honest, and encouraging. Keep screens uncluttered; make feedback immediate with a level chime and a spoken time. Be clear when an attempt was not timed or the camera view is inadequate.
 
-## Decisions
+## Anti-references
 
-- **Sounds are files, not code.** Chimes and the not-timed sound are dropped into `sounds/`; the naming is in SKILL.md.
-- **Dutch voice:** female where available, one decimal, "punt" for the decimal point, no "seconden".
-- **Manual timing doesn't count by default.** A tapped time can be anything, so it stays out of the record, average best and chart, and never sets a record, unless the "Manual timing" setting is on. It's always logged, labelled "manual".
-- **The average is of her best holds, not of every attempt.** Every try starts as a kick-up and about half end within 2 s, so the mean of all attempts says little about her level and barely moves (on 1,681 attempts: 2.3 s, against a record of 12.7 s). Average best is the mean of her best holds over her last 5 practice days, and it only changes when she practises. The chart, the average and the Recent best list all count practice days, not calendar days: a day without an attempt is not a point, so a casual player's chart isn't mostly gaps. Tried and dropped: a duration floor for what counts as a handstand. Durations have no gap to cut at, and a floor hides practice days.
-- **What isn't timed is logged too, apart from the attempts.** Near misses and attempts under 1 s are kept on the phone with their reason and counted in the summary; they never touch the record, the average best or the chart. They mean "the app saw something and didn't count it": a headstand shows up here too. The analytics send the near misses per reason, to show which rule costs the most attempts.
-- **No tab bar.** Home is the start, with one REC button that opens the camera: fewer controls on screen, and the camera is one obvious tap away. Every icon has a 48 px tap area: the app is used with one hand, often from across the room in a hurry. (Layout: design.md.)
-- **Analytics are opt-in and anonymous.** Off by default (testers are asked to turn it on). What is sent is what the privacy page shows: `summary.js` builds both, so what is promised and what is sent can't drift apart.
-- **A session ends when she stops using the camera.** Leaving the record screen, locking the phone or going to another app ends it at once and sends its summary (iPhone doesn't reliably say when an app is closed, but it does say when it goes out of view); an attempt still running then is dropped, not logged. With the phone left on, 3 minutes without an attempt, near miss or tap do the same.
-- **Sharing a record is a deliberate tap.** Tapping the record's row in the Profile summary makes a picture on the phone and shows it; Share opens the share sheet. The app stores and sends nothing, there is no prompt after a new record and no text alongside: the picture stands on its own. (What it shows: design.md.)
-- **Deleting happens in one place:** a day's page, for attempts and not-timed rows alike. The log's day tiles only show. A long swipe deletes without asking (the gesture is the confirmation); a whole day or the whole log asks first.
+- MUST NOT require the parent to operate a separate stopwatch while supervising practice.
+- MUST NOT store or upload camera video.
+- MUST NOT count headstands, sitting kicks, or false starts as handstands.
+- MUST NOT send names or other identifying details in anonymous session summaries.
 
-## Next
+## Design Principles
 
-- **After the test:** catch a handstand resting on the head (`IMG_2320`, `IMG_2322`, `IMG_2323`: arms bent, head on the mat, timed up to 6.8 s). Measured on 69 attempts: the head level with the hands and one arm under 120° for 500 ms catches all 3 timed ones and no others, at 30 and 15 fps; arm stretch alone doesn't separate them. First record it in other clothes, a real bent-arm handstand with the head clear, and one that slowly sinks. Testers are asked to be honest about this one for now.
-- Use the near-miss counts per reason from live sessions (Supabase, and the rows on a day's page) to find which rule costs the most attempts, and the silent misses that still leave no trace.
-- One session on the baseline (see SKILL.md) with the debug box open: note the fps standing and with arms up. Then one with only the upside-down second opinion off, same place and light. Frame rate is the biggest lever the bake-off found (lite at 30 fps timed 59 of 60 attempts, at 15 fps 44).
-- v1 for the tester round (see the v1 requirements doc): the privacy page's retention period and contact, bump `APP_VERSION` in `summary.js`.
+1. **Hands-free and honest.** The timer starts and stops by itself, and only a real handstand counts: kicked up from standing, upside down, and steady. A missed handstand is bad; a counted hack is worse.
+2. **Evidence over guesses.** Measure detection rules on real recordings before shipping them. Accept a change only if it gains without losing on any clip; keep tried-and-dropped variants recorded.
+3. **Private by design.** Analyse the camera on the phone and never record or upload video. Keep the log and athlete's name on the phone. Session totals are anonymous and shared only when the parent enables sharing.
+4. **Light and simple.** Use a static site with plain HTML, CSS, and JavaScript; keep it smooth on an iPhone.
+5. **Motivating, not busy.** Make records stand out in gold, give feedback with sound and voice, and keep the screens calm: no tab bar, one Record button, a few tiles, one chart.
+
+## Accessibility & Inclusion
+
+- Make controls usable one-handed, with a 48 px tap area for every icon.
+- Show the whole athlete in the camera view from a phone placed 2–4 m away; explain when the frame rate or framing is not reliable.
+- Pair the result with visual feedback and a spoken time, so progress is not communicated by colour alone.
+
+## Core Experience
+
+Tap **Record** on Home → athlete kicks up → the timer starts by itself and counts → athlete lands → the attempt is logged, a level chime plays, and the time is spoken ("4 punt 8"). Home shows the record, average, a chart of daily highs, and the five most recent practice days. Profile opens Settings (name, summary, and controls) and Attempts (the log; a day's page is where attempts are deleted).
+
+## Capabilities
+
+- Automatic timing, with optional manual timing as a fallback and for testing sounds. Manual attempts are always logged and labelled; they do not count toward stats unless the setting is enabled.
+- An attempts log with CSV export, import into an empty log, and deletion by attempt, day, or whole log.
+- Record and average-best tiles, a chart of practice-day highs, and a Recent best list. Average best is the mean of the best holds over the latest five practice days; days without practice are not chart points.
+- Near misses and attempts under one second are logged separately with a reason. They are counted in session summaries but do not affect records, averages, or the chart.
+- Camera controls for front/back camera and 0.5×/1× lens, mute, and a warning when frame rate is too low to time reliably.
+- An optional switch for anonymous session totals, with a privacy page describing exactly what is sent.
+- A record picture made on the phone and shared only when the parent chooses, plus a short first-use welcome tutorial that can be reopened in Settings.
+
+## Boundaries
+
+- Not in scope: multiple athletes, accounts or sync, form scoring, storing video, an App Store release, or offline caching.
+- Known limit: swiping the app away very quickly after switching apps can lose that session's summary. Accepted for now; the row count may be slightly low, but no incorrect numbers should be stored.
+
+## Product Decisions
+
+- The average is based on best holds, not all attempts. About half of attempts end within two seconds, so the mean of all attempts barely moves and says little about progress. A duration floor was tried and dropped because durations have no clear gap and a floor hides practice days.
+- A session ends when the athlete leaves the recording screen, locks the phone, switches apps, or leaves the phone idle for three minutes. The summary is sent at that point if sharing is enabled; an attempt still running is dropped.
+- Analytics are opt-out and on by default. A session summary includes counts and times, not a name, account, ID, or time of day. Nothing is queued or retried.
+- The Dutch voice uses a female voice where available, one decimal place, "punt" for the decimal point, and no "seconden".
+- Deletion is available on a day's page for attempts and not-timed rows. A long swipe deletes a row without asking; deleting a whole day or the whole log asks for confirmation.
+
+## Stack
+
+- [Project overview and use](./README.md)
+- [Terminology](./docs/TERMINOLOGY.md)
+- [Design and interface specification](./DESIGN.md)
+- [Metrics Worker setup](./worker/README.md)
