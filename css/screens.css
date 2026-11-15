@@ -879,7 +879,7 @@ a.tile {
 [data-slide="down"]::view-transition-new(root) { animation: none; }
 [data-slide="out"]::view-transition-old(root) { animation-name: to-right; z-index: 1; }
 [data-slide="down"]::view-transition-old(root) { animation-name: to-bottom; z-index: 1; }
-[data-slide="lift"]::view-transition-old(root) { animation-name: to-top; z-index: 1; }
+[data-slide="lift"]::view-transition-old(root) { animation-name: fade-out; z-index: 1; }
 
 @keyframes from-right { from { transform: translateX(100%); } }
 @keyframes to-right { to { transform: translateX(100%); } }
@@ -887,3 +887,4 @@ a.tile {
 @keyframes to-bottom { to { transform: translateY(100%); } }
 @keyframes from-top { from { transform: translateY(-100%); } }
 @keyframes to-top { to { transform: translateY(-100%); } }
+@keyframes fade-out { to { opacity: 0; } }

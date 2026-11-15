@@ -5,7 +5,9 @@ description: Use for any work on Handstand (folder Documents/Dev/handstand, repo
 
 # Handstand
 
-Read `product.md` before any product decision (the job, principles, scope, decisions) and `design.md` before any visual change (what colours and layout mean). This file covers **how** to work. The README has the serve and test commands.
+Read `PRODUCT.md` before any product decision (the job, principles, scope, decisions) and `DESIGN.md` before any visual change (what colours and layout mean). Use `docs/TERMINOLOGY.md` for the definitions of terms used in the codebase. 
+
+This file covers **how** to work. The README has the serve and test commands.
 
 ## Working rules
 
@@ -14,7 +16,7 @@ Read `product.md` before any product decision (the job, principles, scope, decis
 3. **Keep each file's line endings** (some files are CRLF). Read before you replace.
 4. **Privacy:** the repo is public. Videos (`video/`) and phone exports (`data/`) are gitignored and never go into it.
 5. **Words:** a box on screen is a *tile*, never a card: in code, CSS and docs alike. The screens' names are fixed: *Daily records* (the home list tile, her last 5 practice days), *Average best* (the second home tile and the summary row), *Attempts* (the profile segment, `#profile`), *Welcome tutorial* (the settings tile), *Clear* (a day's delete button).
-6. **One home per fact:** `product.md` holds what the app does and why, `design.md` how it looks and what the colours mean. The other file points to it, never repeats it. Keep this file's code map and rules in step with any refactor (file moves, renamed tokens, new components).
+6. **One home per fact:** `PRODUCT.md` holds what the app does and why, `DESIGN.md` how it looks and what the tokens mean. The other file points to it, never repeats it. Keep this file's code map and rules in step with any refactor (file moves, renamed tokens, new components).
 
 ## Code map
 
