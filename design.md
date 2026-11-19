@@ -1,6 +1,6 @@
 # Handstand: design
 
-The look and the rules behind it, in the section order of the DESIGN.md format (Motion and Icons are extra, between Components and Do's and Don'ts). The values live in `css/tokens.css` and are not repeated here; this file says what they mean. What the app does, and why, is in `product.md`.
+The look and the rules behind it, in the section order of the DESIGN.md format (Motion and Icons are extra, between Components and Do's and Don'ts). The values live in `css/tokens.css` and are not repeated here; this file says what they mean. What the app does, and why, is in `PRODUCT.md`. The names used here are defined in `TERMINOLOGY.md`.
 
 ## Overview
 
@@ -10,8 +10,8 @@ Dark, calm and restrained: a few tiles on a near-black page, no decoration. The 
 
 Colour has a meaning.
 
-- **Gold (`--color-gold`):** records (the record tile, the record line and dot in the chart, record rows in the lists, the timer right after a new record) and a switch that is on.
-- **White (`--color-text`):** values (the daily high, the average best) and the active segment.
+- **Gold (`--color-gold`):** records (the Record tile, the record line and dot in the chart, record rows in the lists, the timer right after a new record) and a switch that is on.
+- **White (`--color-text`):** values (the daily high, the Average best) and the active segment.
 - **Dim grey (`--color-dim`):** labels, segments not on view, axis text.
 - **Amber (`--color-wait`) is for "not ready":** the skeleton when part of her is out of frame, the alert icon when the frame rate is too low.
 - **Red (`--color-error`) is for what went wrong or can't be undone:** deleting (the Delete all attempts and Clear buttons, a row's swipe-to-delete), a row that wasn't timed, and what to avoid in the welcome drawings.
@@ -29,8 +29,8 @@ Colour has a meaning.
 - **One length scale** for spacing, corners and icon sizes: each 100 is 4 px (`--space-200` is 8 px, `--space-400` 16 px, `--radius-200` 8 px, `--size-icon-600` 24 px). The number states the size, so a different size is a new token, never an edited one.
 - **Names:** every token in `:root` starts with what it is, then what it is for: `--color-`, `--space-`, `--size-`, `--radius-`, `--shadow-`, `--font-size-`, `--duration-`, `--ease-`. Room kept clear for something is a space (`--space-safe-top`, `--space-safe-button-record`), a fixed dimension is a size (`--size-row`, `--size-topbar`, `--size-tap`, `--size-button-record`). Variables set on one element (`--series`, `--dx`, `--at`) are local and have no prefix.
 - **Tiles:** every box is a `.tile` (background, radius, shadow, 8 px apart); an extra class says what kind: `stat` (Record, Average best), `day` (a day's attempts), `setting` (a name, an optional control, a description). The chart is a tile too. Lists live inside their tile, never on the page background.
-- **No tab bar.** Home has one Record button fixed at the bottom and a profile icon top right. Record and Profile close with a cross top right; pages below Profile go back with an arrow top left. Profile is titled with her name once set, and has two segments: Attempts (one tile per day with its 3 longest attempts) and Settings (the summary with her editable name on top, then the settings). A day's page lists all of a day's attempts, longest first. (A tab bar for Home, Record and Log was used until 31 October; a grid of small day tiles was tried and dropped.)
-- **Top bar:** every screen starts with the same one (`.topbar`, `--size-topbar`): an icon button on the left (back, or the debug toggle on the camera), the title centred, an icon button on the right (the profile on home, the cross on the camera). Each side is optional; everything is centred vertically and a long title is cut off.
+- **No tab bar.** Home has one Record button fixed at the bottom and a profile icon top right. The Record screen and Profile close with a cross top right; pages below Profile go back with an arrow top left. Profile is titled with her name once set, and has two segments: Attempts (one tile per day with its 3 longest attempts) and Settings (the summary with her editable name on top, then the settings). A day's page lists all of a day's attempts, longest first.
+- **Top bar:** every screen starts with the same one (`.topbar`, `--size-topbar`): an icon button on the left (back, or the debug toggle on the camera), the title centred, an icon button on the right (the profile on home, the cross on the camera). Each side is optional; everything is centred vertically and a long title is cut off. The columns follow from the order of the markup, so a new screen only writes the markup.
 - **Record screen:** the camera fills the whole screen. Text on the camera sits on a dark see-through backing; the timer is big and centred; the debug toggle is top left, the cross top right; a bottom bar mirrors the top bar: mute on the left, camera flip on the right, the lens choice (back camera) centred between them; the timer sits just above it.
 
 ## Elevation & Depth
@@ -41,46 +41,46 @@ Colour has a meaning.
 
 ## Shapes
 
-Small things (tags, the share picture) use `--radius-100`; tiles, buttons and dialogs `--radius-tile`; pills and the switch `--radius-pill`; round buttons are circles.
+Small things (tags, the record picture) use `--radius-100`; tiles, buttons and dialogs `--radius-tile`; pills and the switch `--radius-pill`; round buttons are circles.
 
 ## Components
 
 Reuse these before writing a new rule; never style something that already exists by its id. Markup the app builds itself (list rows, the swipe-to-delete button, the share row) gets these looks from selector groups in the css files, not from classes.
 
 - **`.tile`:** the box everything sits in (see Layout).
-- **`.topbar`** and **`.icon-button`:** the top bar, and a 48 px tap area around an icon.
+- **`.topbar`** and **`.icon-button`:** the top bar, and a 48 px tap area (`--size-tap`) around an icon (`--size-icon-500`, `--size-icon-600` on the camera). Every tappable icon is an `.icon-button`; icons are never positioned one by one.
 - **`.icon`:** a line icon: no fill, a 2-unit stroke, round ends, 1em unless sized; its colour is its stroke.
-- **`.row`:** a fixed-height row (`--size-row`) with its contents centred. List rows, tile titles and the record's share button are rows.
+- **`.row`:** a fixed-height row (`--size-row`) with its contents centred. List rows, tile headers, segments, full-width buttons and the Record picture's share button are rows.
 - **`.button-wide`:** a full-width button, a row tall, on a tile's shadow. Add **`.button-danger`** for red text when it can't be undone.
 - **`.link`:** an inline link: underlined, in the text colour.
-- **Tags** in a row: the current record has a gold "record" tag; in the log and on a day's page, earlier records have the same tag in dim; "manual" attempts a dim tag; rows that weren't timed a red tag with the reason.
+- **Tags** in a row: the current Record has a gold "record" tag; in the Attempts log and on a day's page, earlier records have the same tag in dim; manual attempts a dim tag; rows that weren't timed a red tag with the reason.
 - **Switch:** a checkbox drawn as a track with a knob, the same on every browser; gold when on.
-- **Daily records (home):** her last 5 practice days as rows, newest on top: the day (the weekday, or the date once it is a week or more back), the time of its best attempt, and that best. The record day has the record tag. The whole tile opens the Attempts log.
+- **Daily records (home):** `RECENT_DAYS` practice days as rows, newest on top: the day (the weekday, or the date once it is a week or more back), the time of its best attempt, and its daily high. The Record day has the record tag. The whole tile opens Attempts.
 - **Segments:** one pill with the segment on view filled; the highlight slides to the segment tapped.
 
 ### Chart
 
-- **One point per practice day, with no calendar between them.** Her best hold on each practice day, joined by a faint dashed line (0.4 opacity), with the gap up to the record line as an area that is strongest at the daily line and fades out towards the record line: it shows how she did from one session to the next, not the days in between. 5 points on screen, the latest on the right; swipe for the earlier ones. With fewer than 5 practice days they sit at the right.
-- **Nothing along the bottom.** The points are practice days, not dates, so there is no day axis. The Daily records list under the chart has the dates. Revisit if a long gap between two sessions needs to show.
-- **Straight across:** the all-time record in gold, dashed up to the record dot and solid after it. Tapping the Record or Average best tile makes its line flicker 3 times, to show which line is which.
-- **The average best:** a full white line, the one that should climb. On each practice day, the mean of her best holds over it and the 4 practice days before it, joined by a smooth curve. It continues dashed from its latest value to the right edge. The Average best tile shows its latest value.
+- **One point per practice day, with no calendar between them.** The daily high of each practice day, joined by a faint dashed line (0.4 opacity), with the gap up to the record line as an area that is strongest at the daily line and fades out towards the record line: it shows how she did from one session to the next, not the days in between. `RECENT_DAYS` points on screen (`stats.js`), the latest on the right; swipe for the earlier ones. With fewer practice days than that they sit at the right.
+- **Nothing along the bottom.** The points are practice days, not dates, so there is no day axis. Daily records has the dates. Revisit if a long gap between two sessions needs to show.
+- **Straight across:** the all-time Record in gold, dashed up to the record dot and solid after it. Tapping the Record or Average best tile makes its line flicker 3 times, to show which line is which.
+- **Average best:** a full white line, the one that should climb. Its value on each practice day is the Average best as of that day, joined by a smooth curve. It continues dashed from its latest value to the right edge. The Average best tile shows its latest value.
 - **The latest daily high:** a dot marks the end of the daily-high line at the latest practice day.
-- **One record dot, at most:** on the day the current record was set, where the daily line meets the record line.
+- **One record dot, at most:** on the day the current Record was set, where the daily line meets the record line.
 - **Y axis:** whole even seconds, at most 8 faint gridlines.
 
-### Share picture
+### Record picture
 
 Made on the phone from the Record tile as on home, with "by" and her name if set; the app's name above it, the date below, and "manually timed" if the time was tapped. It is shown before sharing, over a dark page, with a cross top right and Share under it.
 
-### Welcome
+### Welcome tutorial
 
-An intro and three slides on first opening an empty app, and from Settings (Welcome tutorial, a tile with a short description under its title): set up the phone, give it a clear view, it stays on this phone. One tile per slide, swiped sideways, with dots and a Next button (Get started on the last slide). The drawings use the icons' lines: gold is her, red what to avoid, dim what only places things.
+An intro and three slides on first opening an empty app, and from Settings (a tile with a short description under its title): set up the phone, give it a clear view, it stays on this phone. One tile per slide, swiped sideways, with dots and a Next button (Get started on the last slide). The drawings use the icons' lines: gold is her, red what to avoid, dim what only places things.
 
 ## Motion
 
 - **Screens slide:** the camera rises from the bottom and drops back down; the profile comes down from the top and goes back up; a page below the profile (a day's page, privacy) slides in from the right and back out to the right. `--duration-screen`, no fades.
 - **Segments:** the highlight slides to the segment tapped.
-- **Reduced motion:** nothing slides (app.js skips the transition), and the switch, the segment highlight and the bobbing arrow stand still. A tap on Record or Average best still flickers its line: that is the answer to the tap.
+- **Reduced motion:** nothing slides (app.js skips the transition), and the switch, the segment highlight and the bobbing arrow stand still. A tap on Record or Average best still flickers its line: that is the answer to the tap. Anything else that moves respects it too.
 
 ## Icons
 
@@ -92,7 +92,7 @@ Lucide: no fill, 2-unit stroke, round ends and joins. 24 px for icon buttons on 
 - Reuse a component before writing a rule, and never style an existing thing by its id.
 - Gold means a record (and a switch that is on), red means it went wrong or can't be undone, and REC red belongs to the Record button alone.
 - Keep lists inside their tile, never on the page background.
-- No tab bar, no grid of small day tiles: both were tried and dropped.
+- No tab bar, no grid of small day tiles: both were tried and dropped (the tab bar for Home, Record and Log was used until 31 October).
 - Screens slide, they never fade.
 - Never show the skeleton as ready (green) before she has been seen standing.
-- Renaming a token that JS reads means editing the JS too: app.js reads `--color-dim`, `--color-wait`, `--color-ready`, `--size-button-row-delete` and `--duration-fast` by name, and share.js reads its colours by name.
+- Renaming a token that JS reads means editing the JS in the same change; SKILL.md lists which tokens JS reads.

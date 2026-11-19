@@ -1,9 +1,18 @@
 # Handstand
 
 A phone web app that times handstands automatically with the camera and keeps a log.
-Pose detection runs on the device (MediaPipe); video is never stored or uploaded.
 
-Live: https://tombeemster.github.io/handstand/
+> Live: https://tombeemster.github.io/handstand/
+
+Pose detection runs on the device with MediaPipe; video is never stored or uploaded.
+Optionally, anonymous session totals go to a small Cloudflare Worker that stores them in Supabase; the privacy page in the app shows exactly what is sent.
+
+| Topic | Guidelines |
+| :-- | :-- |
+| What & Why | [PRODUCT.md](PRODUCT.md) |
+| How it looks | [DESIGN.md](DESIGN.md) |
+| What the words mean | [TERMINOLOGY.md](TERMINOLOGY.md) |
+| Way of working | [SKILL.md](.claude\skills\handstand\SKILL.md) |
 
 ## Preview locally
 
@@ -17,13 +26,27 @@ On `localhost` the camera works without HTTPS.
 ## Files
 
 - `index.html`: markup for the app screens
-- `css/`: styles
+- `css/`: styles (`tokens.css`, `base.css`, `screens.css`)
 - `app.js`: screens, log, chart, camera, sound
 - `detect.js`: pose tracking and detection rules for attempts and near misses
+- `share.js`: draws the record picture
 - `summary.js`: builds an anonymous session summary
-- `stats.js`: calculates practice-day highs and the average best
+- `stats.js`: calculates practice days, daily highs and the Average best
 - `csv.js`: imports and exports the attempt log
-- `tools/replay.py`, `tools/replay.mjs`: run recorded videos through the app's own rules
+- `worker/`: the Cloudflare Worker that stores session summaries (setup in [worker/README.md](worker/README.md))
+- `sounds/`, `icons/`, `site.webmanifest`: chimes, app icons and the web app manifest
+- `tools/`: replay and test scripts
+
+## Tests
+
+```bash
+node tools/test.mjs         # summary and CSV
+node tools/test-stats.mjs   # daily highs and Average best
+node worker/test.mjs        # the Worker
+bash worker/test-live.sh <url>   # the deployed Worker; needs bash (Git Bash on Windows)
+```
+
+`test-live.sh` stores one row with `app_version` 0.0.0; delete it afterwards in Supabase.
 
 ## Test on recordings
 
@@ -55,4 +78,7 @@ Sources:
 - From [Kenney](https://kenney.nl), CC0: the `confirmation` and `error-scroll` sounds (Interface Sounds)
 - Generated with ElevenLabs: the two `ElevenLabs_…` files
 
+## Assets
+
 Icons: [Lucide](https://lucide.dev) (ISC licence).
+Achievements images: [Antahonist](https://antahonist.itch.io/48-achievement-trophy-icons)
