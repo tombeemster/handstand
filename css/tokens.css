@@ -16,7 +16,7 @@
   --color-error: #ff5c5c;        /* what went wrong or can't be undone: deleting, a row that wasn't timed, what to avoid */
   --color-rec: #d23a2a;          /* the REC button's red dot (its light and dark edges are mixed from it) */
   --color-scrim: #000a;          /* dark see-through backing for text on the camera view */
-  --color-scrim-strong: #000c;
+  --color-scrim-strong: rgba(0,0,0,.9);
   --color-divider: rgba(255, 255, 255, 0.05);   /* the hairline between rows */
 
   /* one length scale for spacing, corners and icons: each 100 is 4px. The number states the size, so a

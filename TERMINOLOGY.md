@@ -4,9 +4,10 @@ The single source for names and definitions in Handstand. The other files use th
 
 | Term | Definition |
 |:--|:--|
+| **All-Time High** | The All-Time High. The longest counted hold so far; an ATH-setting attempt establishes a new one. Also the name of its home tile. See [`app.js`](../app.js). |
+| **ATH** | Abbreviation for All-Time High. Used scarcely in copy, e.g. as a tag in the list-row. |
 | **Attempt** | One try to kick up and hold a handstand, timed automatically or manually. An automatic hold under one second is logged as **Not timed**, not as an attempt. See [`app.js`](../app.js). |
 | **Average best** | The mean of the daily highs over the latest five practice days, not the mean of every attempt. Also the name of its home tile. See [`stats.js`](../stats.js) and [`DESIGN.md`](../DESIGN.md#chart). |
-| **Best** | The All-time High. The longest counted hold so far; an ATH-setting attempt establishes a new one. Also the name of its home tile. See [`app.js`](../app.js). |
 | **Clear** | A day's delete button. See [`DESIGN.md`](../DESIGN.md#components). |
 | **Daily high** | The longest counted hold on one practice day. Use this term, not "best hold" or "daily record". See [`stats.js`](../stats.js). |
 | **Detection** | Evaluating tracked poses over time to decide whether an automatic attempt starts or ends, or whether an event is a near miss. See [`detect.js`](../detect.js). |

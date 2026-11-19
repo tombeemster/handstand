@@ -4,6 +4,7 @@ import { averageBest, RECENT_DAYS } from './stats.js';
 import { toCsv, parseCsv } from './csv.js';
 import { recordCard } from './share.js';
 import { valid as validSummary } from './worker/index.js';
+import { groups as achievementGroups, trophyExtra, fmt, fmtSpoken, TROPHIES, TROPHIES_LARGE, initUnlockDialog } from './achievements.js';
 
 const MP = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
@@ -18,7 +19,6 @@ const tokenMs = name => { const v = token(name); return parseFloat(v) * (v.endsW
 // corrupt value, recall gives the fallback and remember does nothing.
 const recall = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const remember = (key, value) => { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} };
-const fmt = ms => (ms / 1000).toFixed(2);
 // Local time as ISO 8601 without a zone, e.g. 2026-10-11T18:04:12
 const localIso = d => new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 19);
 
@@ -30,6 +30,8 @@ const MANUAL_KEY = 'handstand.countManual';
 let countManual = !!recall(MANUAL_KEY, false);
 // The attempts the stats are made of: all of them, or the automatic ones only
 const counted = () => countManual ? attempts : attempts.filter(a => a.method !== 'manual');
+// The unlock dialog (achievements.js): after an attempt, one for each new achievement
+const unlocks = initUnlockDialog({ counted, recall, remember, screen: () => screen });
 // What the app saw but didn't time (near misses, attempts under 1 s), newest first: { started_at, why }.
 // Kept apart from the attempts, so they can't touch the record, the average or the chart (Export does include them).
 const NOT_TIMED_KEY = 'handstand.notTimed', NOT_TIMED_MAX = 2000;
@@ -58,6 +60,7 @@ const averageNow = () => practiceDays().at(-1)?.avg ?? null;
 // Redrawing every screen on every landing cost a stutter while the camera ran, more as the log grows.
 function save() {
   remember(KEY, attempts);
+  unlocks.forget();   // an unlock that is no longer earned is announced again when it is earned again
   render();
 }
 
@@ -68,7 +71,7 @@ const stamp = a => `${new Date(a.started_at).toLocaleDateString('en-GB', { day: 
 const dayLabel = day => new Date(day + 'T12:00').toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
 
 // The tag of an attempt that set a record at its time;
-const RECORD_TAG = '<small class="is-best">best</small>', OLD_RECORD_TAG = '<small>record</small>';
+const RECORD_TAG = '<small class="is-best">ATH</small>', OLD_RECORD_TAG = '<small>best</small>';
 
 // One attempt as a list row: its date and time, its duration; cls: 'best' (a record), 'top' or ''.
 // rec: records(), for the record tags; end: more inside the row (a day's Delete button).
@@ -221,7 +224,7 @@ let screen = 'home', day = null, segment = 'log';   // on view now
 function render() {
   if (screen === 'home') renderHome();
   if (screen === 'day') renderDay(day);
-  if (screen === 'profile') { renderProfile(); renderLog(); }
+  if (screen === 'profile') { renderProfile(); renderLog(); if (segment === 'achievements') renderAchievements(); }
   if (screen === 'welcome') renderWelcome();
   if (screen === 'privacy') renderPrivacy();
 }
@@ -250,7 +253,7 @@ function route() {
   const from = screen;
   screen = name === 'log' ? 'day' : SCREENS.includes(name) ? name : 'home';
   day = name === 'log' ? part : null;
-  segment = part === 'settings' ? 'settings' : 'log';
+  segment = part === 'settings' ? 'settings' : part === 'achievements' ? 'achievements' : 'log';
   if (screen === 'welcome' && from !== 'privacy') openWelcome(from);
   if (screen === 'privacy' && from !== 'privacy') $('privacy-back').hash = from === 'welcome' ? '#welcome' : '#profile/settings';
   const show = () => {
@@ -290,9 +293,9 @@ function renderProfile() {
   $('summary').innerHTML = [
     ['Attempts', attempts.length + (manual ? ` (${manual} manual)` : '')],
     ['Not timed', notTimed.length],
-    ['Record', pb ? fmt(pb) + 's' : '–'],
+    ['All-Time High', pb ? fmt(pb) + 's' : '–'],
     ['Average best', avg ? fmt(avg) + 's' : '–'],
-  ].map(([label, value]) => label === 'Record' && pb
+  ].map(([label, value]) => label === 'All-Time High' && pb
     // the record's row is the share button, with the forward icon after the value
     ? `<li class="share-row"><button id="share-record" aria-label="Share her record of ${value}"><span>${label}</span>${records().current.method === 'manual' ? '<small>manual</small>' : ''}<strong>${value}</strong>${FORWARD}</button></li>`
     : `<li><span>${label}</span><strong>${value}</strong></li>`).join('');
@@ -326,6 +329,67 @@ $('count-manual').onchange = e => {
   remember(MANUAL_KEY, countManual);
   renderProfile();   // the summary follows it; the other screens redraw when visited
 };
+
+// The achievements: counted() like the stats, so the Manual timing setting applies and the All-Time High
+// tile and the cups agree. Each title is two lines, broken where achievements.js says.
+const LOCK = '<svg class="lock" width="33" height="36" viewBox="0 0 33 36" fill="none" aria-hidden="true"><path fill="currentColor" d="M16.0498 0C18.4736 0 20.7988 0.962945 22.5127 2.67676C24.2264 4.39054 25.1893 6.71508 25.1895 9.13867V13.8223H28.1445C30.3291 13.8223 32.1005 15.5938 32.1006 17.7783V31.6006C32.1004 33.7851 30.3291 35.5557 28.1445 35.5557H3.95605C1.77158 35.5556 0.000156672 33.785 0 31.6006V17.7783C0.000133512 15.5938 1.77156 13.8223 3.95605 13.8223H6.91113V9.13867C6.91125 6.71503 7.87412 4.39055 9.58789 2.67676C11.3017 0.962982 13.6262 0.000136752 16.0498 0ZM3.95605 14.8223C2.32385 14.8223 1.00013 16.1461 1 17.7783V31.6006C1.00016 33.2328 2.32386 34.5556 3.95605 34.5557H28.1445C29.7768 34.5557 31.1004 33.2328 31.1006 31.6006V17.7783C31.1005 16.1461 29.7768 14.8223 28.1445 14.8223H3.95605ZM16.0498 22.4619C17.2801 22.4619 18.2782 23.4592 18.2783 24.6895C18.2781 25.9197 17.2801 26.918 16.0498 26.918C14.8198 26.9177 13.8225 25.9195 13.8223 24.6895C13.8224 23.4594 14.8197 22.4622 16.0498 22.4619ZM16.0498 23.4619C15.372 23.4622 14.8224 24.0116 14.8223 24.6895C14.8225 25.3672 15.3721 25.9177 16.0498 25.918C16.7278 25.918 17.2781 25.3674 17.2783 24.6895C17.2782 24.0115 16.7278 23.4619 16.0498 23.4619ZM16.0498 1C13.8914 1.00014 11.8212 1.85755 10.2949 3.38379C8.76869 4.91004 7.91125 6.98025 7.91113 9.13867V13.8223H24.1895V9.13867C24.1893 6.9803 23.3318 4.91003 21.8057 3.38379C20.2793 1.85751 18.2083 1 16.0498 1Z"/></svg>';
+function renderAchievements() {
+  const shown = achievementGroups(counted());
+  // before her first attempt nothing is unlocked and groups() is empty: same markup as "No attempts yet."
+  $('achievements').innerHTML = !shown.length
+    ? '<div class="tile"><ul><li class="text-dim">Your achievements will show up here</li></ul></div>'
+    : shown.map(({ category, items }) => `
+    <section class="achievements-group">
+      <h2>${category}</h2>
+      <ul class="trophies">${items.map(a => a.unlocked
+        ? `<li><button class="tile trophy" data-id="${a.id}" aria-label="${a.title}"><img src="${TROPHIES}${a.image}.png" alt="" width="64" height="64"><span>${a.lines[0]}<br>${a.lines[1]}</span></button></li>`
+        : `<li><div class="tile trophy locked" aria-label="Locked">${LOCK}</div></li>`).join('')}</ul>
+    </section>`).join('');
+}
+
+$('achievements').onclick = e => {
+  const b = e.target.closest('button.trophy');
+  const item = b && achievementGroups(counted()).flatMap(g => g.items).find(i => i.id === b.dataset.id);
+  if (item) openTrophy(item);
+};
+
+// The trophy modal: the big image, the trophy's name above the title, when it was claimed and (for holds) the time.
+// Built once, filled on every opening. Closed by Close, by Escape and by a tap beside it.
+async function openTrophy(item) {
+  let d = $('trophy-modal');
+  if (!d) {
+    d = document.createElement('dialog');
+    d.id = 'trophy-modal';
+    d.className = 'trophy-dialog trophy-detail';
+    d.onclick = e => { if (e.target === d) d.close(); };
+    document.body.append(d);
+  }
+  const claimed = new Date(item.day + 'T12:00').toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  const extra = trophyExtra(item);
+  d.setAttribute('aria-labelledby', 'trophy-title');
+  d.innerHTML = `
+    <div class="tile trophy-body">
+      <img class="trophy-art" src="${TROPHIES_LARGE}${item.image}.png" alt="" width="200" height="200">
+      <div class="trophy-msg">
+        <p class="trophy-name">${item.trophy}</p>
+        <h2 id="trophy-title">${item.title}</h2>
+        <dl class="trophy-facts"><dt>Claimed</dt><dd>${claimed}</dd>${extra ? `<dt>${extra[0]}</dt><dd>${extra[1]}</dd>` : ''}</dl>
+      </div>
+    </div>
+    <div class="trophy-buttons"><button class="button-wide close">Close</button><button class="button-wide button-gold share">Share</button></div>`;
+  await d.querySelector('.trophy-art').decode().catch(() => {});   // the trophy lands on a loaded image (.trophy-detail in screens.css)
+  d.querySelector('.close').onclick = () => d.close();
+  d.querySelector('.share').onclick = async e => {
+    const text = `Unlocked the ${item.trophy}: ${item.title}`;
+    if (navigator.share) { try { await navigator.share({ text }); } catch {} return; }
+    try {
+      await navigator.clipboard.writeText(text);   // no share sheet (a computer): copy it
+      e.target.textContent = 'Copied';
+      setTimeout(() => { e.target.textContent = 'Share'; }, 1500);
+    } catch {}
+  };
+  if (!d.open) d.showModal();   // a second tap while the image decodes must not open it twice
+}
 
 // Analytics: sharing anonymous session totals, off by default. The summary of each session is made
 // when it ends (see closeSession) and sent only if this is on: once, no retry, no queue, nothing kept for
@@ -480,7 +544,7 @@ function renderChart(chart) {
   $('chart').innerHTML = `<svg class="seconds" viewBox="0 0 ${L} ${H}" aria-hidden="true">
     ${ticks.map(v => `<text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v / 1000} s</text>`).join('')}
   </svg>
-  <div class="scroller"><svg viewBox="0 0 ${plotW} ${H}" style="width: ${slots / RECENT_DAYS * 100}%" role="img" aria-label="Her best hold on each practice day, the all-time record and the average best over ${RECENT_DAYS} practice days">
+  <div class="scroller"><svg viewBox="0 0 ${plotW} ${H}" style="width: ${slots / RECENT_DAYS * 100}%" role="img" aria-label="Her best hold on each practice day, the all-time high and the average best over ${RECENT_DAYS} practice days">
     <line class="axis" x1="0" y1="${y(0)}" x2="${plotW}" y2="${y(0)}"/>
     ${ticks.map(v => `<line class="grid" x1="0" y1="${y(v)}" x2="${plotW}" y2="${y(v)}"/>`).join('')}
     <g class="series-best">${dailyLine}${dailyDot}</g>
@@ -674,7 +738,7 @@ function speak(text) {
   speechSynthesis.speak(say);
 }
 // "4 punt 8", "13": one decimal, said as "punt"
-const spokenTime = ms => (ms / 1000).toFixed(1).replace(/\.0$/, '').replace('.', ' punt ');
+const spokenTime = ms => fmtSpoken(ms).replace(/\.0$/, '').replace('.', ' punt ');
 
 // The debug box (the scan button, top right of the record screen), on or off, remembered on this device
 const DEBUG_KEY = 'handstand.debug';
@@ -741,6 +805,7 @@ function endAttempt(startTs, endTs, method, flagged = false, wait = 0) {
   $('timer').classList.toggle('record', record);
   announcing = setTimeout(() => muted || chime(duration_ms,
     () => speak(record ? `Nieuw record! ${spokenTime(duration_ms)}` : spokenTime(duration_ms))), wait);
+  setTimeout(unlocks.show, wait + 1500);   // once the time has been said; also when muted
   return duration_ms;
 }
 

@@ -78,4 +78,7 @@ Sources:
 - From [Kenney](https://kenney.nl), CC0: the `confirmation` and `error-scroll` sounds (Interface Sounds)
 - Generated with ElevenLabs: the two `ElevenLabs_…` files
 
+## Assets
+
 Icons: [Lucide](https://lucide.dev) (ISC licence).
+Achievements images: [Antahonist](https://antahonist.itch.io/48-achievement-trophy-icons)

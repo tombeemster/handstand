@@ -35,9 +35,9 @@ export async function recordCard({ time, date, name, manual }) {
   const valueWidth = g.measureText(time).width;
   const bySize = by ? fit(g, by, BY, 400, room) : 0;
   const byWidth = by ? g.measureText(by).width : 0;
-  const labelSize = bySize || BY;   // "Record" as big as "by [name]"
+  const labelSize = bySize || BY;   // "All-Time High" as big as "by [name]"
   g.font = font(400, labelSize);
-  const tileWidth = Math.max(g.measureText('Record').width, valueWidth, byWidth) + 2 * PAD;
+  const tileWidth = Math.max(g.measureText('All-Time High').width, valueWidth, byWidth) + 2 * PAD;
   const tileHeight = 2 * PAD + (labelSize + valueSize + bySize) * LINE;
 
   // the tile in the very middle of the picture; above and below it, at the same distance, one line each
@@ -70,7 +70,7 @@ export async function recordCard({ time, date, name, manual }) {
 
   // inside it: the label, the time, and who holds it
   let y = top + PAD;
-  for (const [text, size, colour] of [['Record', labelSize, token('--color-dim')], [time, valueSize, token('--color-gold')], [by, bySize, token('--color-text')]]) {
+  for (const [text, size, colour] of [['All-Time High', labelSize, token('--color-dim')], [time, valueSize, token('--color-gold')], [by, bySize, token('--color-text')]]) {
     if (!text) continue;
     line(text, 400, size, colour, y + size * LINE / 2);
     y += size * LINE;

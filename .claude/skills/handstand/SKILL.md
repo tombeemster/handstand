@@ -30,7 +30,7 @@ This file covers **how** to work and what in the code is coupled.
 
 - `detect.js`: **all** detection rules, with no page and no clock.
 - `app.js`: screens and routing (`#home`, `#record`, `#profile` = Attempts (also `#profile/log`), `#profile/settings` (where the profile icon goes), `#privacy`, `#log/<date>`; old `#log` links go to `#profile/log`); log and chart, settings, camera, sound and speech. Stats read `counted()`, never `attempts`, so the manual timing setting applies everywhere.
-- `stats.js`: `RECENT_DAYS`, practice days, daily highs and the Average best; pure and tested in `tools/test-stats.mjs`. `practiceDays()` in `app.js` calls it and is shared by the chart, Daily records and the Average best tile.
+- `stats.js`: `RECENT_DAYS`, practice days, daily highs and the Average best; pure and tested in `tools/test-stats.mjs`. `practiceDays()` in `app.js` calls it and is shared by the chart, Daily highs and the Average Best tile.
 - `share.js`: draws the record picture on a canvas (`prepareCard` in `app.js` draws it ahead: iPhone only allows sharing straight after a tap).
 - `csv.js`: the export format, attempts and not-timed rows, written and read in one place (every imported field is checked: the values end up in the page; a new character in a reason must pass its check too).
 - `summary.js`: the anonymous session summary, a pure function (testable in Node). What it puts in must match the privacy page in `index.html`, which shows its output, and `valid` in `worker/index.js`.

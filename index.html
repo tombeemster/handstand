@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="css/tokens.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/screens.css">
+<link rel="stylesheet" href="css/unlock-dialog.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
 
 </head>
@@ -34,14 +35,14 @@
   </div>
   <div id="tiles">
     <!-- a tap lights up the tile's line in the chart (data-line) -->
-    <div class="tile stat series-record" data-line="series-record"><span class="stat-title">Best</span> <b id="best">–</b></div>
-    <div class="tile stat series-avg" data-line="series-avg"><span class="stat-title">Average</span> <b id="average">–</b></div>
+    <div class="tile stat series-record" data-line="series-record"><span class="stat-title">All-Time High</span> <b id="best">–</b></div>
+    <div class="tile stat series-avg" data-line="series-avg"><span class="stat-title">Average Best</span> <b id="average">–</b></div>
   </div>
   <figure id="chart" class="tile"></figure>
   <!-- her last 5 practice days as a list, the latest on top; the whole tile opens the log, like a log's day
        tile opens its day. Arrow icon: Lucide arrow-right -->
   <a class="tile" href="#profile/log">
-    <div class="tile-label tile-header">Recent records <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+    <div class="tile-label tile-header">Daily highs <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
     <ul id="highs"></ul>
   </a>
   <!-- the way to the record screen: a camera-style REC button fixed at the bottom of home (drawn in CSS) -->
@@ -107,8 +108,9 @@
   </header>
   <nav class="segments" aria-label="Profile">
     <span class="thumb" aria-hidden="true"></span>
-    <a href="#profile/settings" data-segment="settings">Settings</a>
-    <a href="#profile" data-segment="log">Attempts</a>
+    <a data-segment="settings" href="#profile/settings">Settings</a>
+    <a data-segment="achievements" href="#profile/achievements">Trophies</a>
+    <a data-segment="log" href="#profile">Attempts</a>
   </nav>
   <div id="segment-log">
     <div id="days"></div>
@@ -127,24 +129,25 @@
       </label>
       <ul id="summary"></ul>
     </div>
-  <!-- a setting: its name and switch on top, what it does underneath -->
-  <div class="tile setting">
-    <label class="tile-label tile-header">Manual timing <input type="checkbox" role="switch" class="switch" id="count-manual"></label>
-    <p class="setting-note">Include manual timing in averages and records.</p>
+    <!-- a setting: its name and switch on top, what it does underneath -->
+    <div class="tile setting">
+      <label class="tile-label tile-header">Manual timing <input type="checkbox" role="switch" class="switch" id="count-manual"></label>
+      <p class="setting-note">Include manual timing in averages and records.</p>
+    </div>
+    <div class="tile setting">
+      <label class="tile-label tile-header">Share sessions <input type="checkbox" role="switch" class="switch" id="share-summaries"></label>
+      <p class="setting-note">
+        Shares totals of each session. Only counts and times, no names or ids.
+        <a href="#privacy">Privacy statement</a>
+      </p>
+    </div>
+    <!-- the welcome again. Arrow icon: Lucide arrow-right -->
+    <a class="tile setting" href="#welcome">
+      <div class="tile-label tile-header">Welcome tutorial<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
+      <p class="setting-note">How to set up the phone and get started.</p>
+    </a>
   </div>
-  <div class="tile setting">
-    <label class="tile-label tile-header">Share sessions <input type="checkbox" role="switch" class="switch" id="share-summaries"></label>
-    <p class="setting-note">
-      Shares totals of each session. Only counts and times, no names or ids.
-      <a href="#privacy">Privacy statement</a>
-    </p>
-  </div>
-  <!-- the welcome again. Arrow icon: Lucide arrow-right -->
-  <a class="tile setting" href="#welcome">
-    <div class="tile-label tile-header">Welcome tutorial<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></div>
-    <p class="setting-note">How to set up the phone and get started.</p>
-  </a>
-  </div>
+  <div id="segment-achievements" hidden><div id="achievements"></div></div>
 </section>
 
 

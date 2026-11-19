@@ -1,8 +1,8 @@
 /* Handstand: the screens, in the order of the app. Needs tokens.css and base.css.
 
    4. Record button        8. Profile and settings    12. The picture of a record
-   5. Home screen          9. A day's page            13. Moving between screens
-   6. Tiles and the log    10. Privacy statement
+   5. Home screen          9. A day's page            13. Achievements  
+   6. Tiles and the log    10. Privacy statement      14. Moving between screens
    7. Record screen        11. Welcome
 */
 
@@ -259,13 +259,13 @@
 
 .stat-title {
   font-size: var(--font-size-300);
-  color: var(--color-text);
+  color: var(--color-dim);
 }
 
 .stat b {
   display: block;
   font-size: var(--font-size-500);
-  font-weight: 400;
+  font-weight: 500;
   color: var(--series);
   font-variant-numeric: tabular-nums;
   margin: var(--space-100) 0;
@@ -330,6 +330,11 @@ a.tile {
 .button-danger,
 .row-delete {
   color: var(--color-error);
+}
+
+/* gold text: the button to take (View achievements, and Share, in the trophy dialogs) */
+.button-gold {
+  color: var(--color-gold);
 }
 
 #delete-all {
@@ -813,7 +818,8 @@ a.tile {
   box-shadow: var(--shadow-tile);
 }
 
-#share-preview::backdrop {
+#share-preview::backdrop,
+.trophy-dialog::backdrop {
   background: var(--color-scrim-strong);
 }
 
@@ -858,7 +864,226 @@ a.tile {
   stroke: var(--color-dim);
 }
 
-/* 13. Moving between screens ------------------------------------------------ */
+/* 13. Achievements ---------------------------------------------------------- */
+
+/* The overview (#profile/achievements): a group per category, its trophies in a grid. A locked trophy is only a lock. */
+.achievements-group {
+  margin-top: 40px;
+}
+
+.achievements-group h2 {
+  border: 0;
+  justify-content: left;
+  font-size: var(--font-size-300);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-dim);
+}
+
+.trophies {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: none;
+  box-shadow: none;
+}
+
+@media (min-width: 400px) {
+  .trophies {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.trophies li {
+  border: 0;
+  padding: 0;
+}
+
+/* a trophy: the picture and its title in two lines (the break is fixed in achievements.js); a button once unlocked */
+.tile.trophy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  height: 160px;
+  margin: 0;
+}
+
+.tile.trophy img {
+  width: 64px;
+  height: 64px;
+}
+
+.tile.trophy span {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.tile.trophy.locked {
+  color: var(--color-dim);
+}
+
+button.tile.trophy {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+button.tile.trophy:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* The two dialogs on a trophy, one card: .trophy-detail (a trophy opened on the overview) and .trophy-unlock (a new
+   achievement, on the record screen). The trophy hangs over the top of the card's tile. */
+.trophy-dialog {
+  width: 320px;
+  max-width: calc(100vw - 40px);
+  padding: 8px;
+  overflow: visible;
+  border: 1px solid var(--color-tile-edge-light);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.trophy-dialog .trophy-body {
+  position: relative;
+  padding-top: 120px;
+}
+
+.trophy-dialog .trophy-art {
+  position: absolute;
+  top: -64px;
+  left: 50%;
+  width: 200px;
+  height: 200px;
+  translate: -50% 0;
+}
+
+.trophy-dialog .trophy-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 0;
+  text-align: center;
+}
+
+.trophy-dialog .trophy-msg .trophy-name {
+  margin: 0;
+  font-size: 14.4px;
+  font-weight: 400;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--color-dim);
+}
+
+.trophy-dialog .trophy-msg h2 {
+  margin: 0;
+  max-width: 208px;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.trophy-unlock .unlock-line {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+/* when and how: the trophy modal's table */
+.trophy-detail .trophy-facts {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 24px;
+  margin: var(--space-100);
+  font-size: 16px;
+  line-height: 1.2;
+  text-align: left;
+}
+
+.trophy-detail dt {
+  color: var(--color-dim);
+}
+
+.trophy-detail dd {
+  margin: 0;
+}
+
+/* two buttons side by side; in the unlock dialog under each other */
+.trophy-dialog .trophy-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.trophy-unlock .trophy-buttons {
+  grid-template-columns: 1fr;
+}
+
+/* The trophy modal's entrance: the modal scales up and fades in from its centre, then the trophy lands in its place,
+   sliding down and fading in from above. For the unlock dialog too: change .trophy-detail to .trophy-dialog. */
+.trophy-detail, .trophy-unlock {
+  --modal-in: 240ms;       /* the modal: scale up and fade in */
+  --trophy-in: 560ms;      /* the trophy: slide down and fade in */
+  --trophy-rise: 40px;     /* how far above its place the trophy starts */
+}
+
+.trophy-detail[open], .trophy-unlock[open] {
+  animation: trophy-modal-in var(--modal-in) cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.trophy-detail[open]::backdrop, .trophy-unlock[open]::backdrop {
+  animation: trophy-backdrop-in var(--modal-in) ease-out both;
+}
+
+.trophy-detail[open] .trophy-art, .trophy-unlock[open] .trophy-art {
+  animation: trophy-land var(--trophy-in) cubic-bezier(.22, 1, .36, 1) both;
+}
+
+@keyframes trophy-modal-in {
+  from { opacity: 0; transform: scale(.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes trophy-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* transform, not translate: the trophy is centred with `translate`, which this must not undo */
+@keyframes trophy-land {
+  from { opacity: 0; transform: translateY(calc(-1 * var(--trophy-rise))); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trophy-detail[open],
+  .trophy-detail[open]::backdrop,
+  .trophy-detail[open] .trophy-art,
+  .trophy-unlock[open],
+  .trophy-unlock[open]::backdrop,
+  .trophy-unlock[open] .trophy-art {
+    animation: none;
+  }
+}
+
+
+/* 14. Moving between screens ------------------------------------------------ */
 
 /* Moving between screens (app.js sets data-slide): the new screen slides over the old one, or the old
    one slides away off the new; the screen that doesn't move stays put */
